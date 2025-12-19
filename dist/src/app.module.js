@@ -27,6 +27,13 @@ const returns_module_1 = require("./returns/returns.module");
 const reviews_module_1 = require("./reviews/reviews.module");
 const site_content_module_1 = require("./site-content/site-content.module");
 const wishlist_module_1 = require("./wishlist/wishlist.module");
+const home_module_1 = require("./home/home.module");
+const featured_products_module_1 = require("./featured-products/featured-products.module");
+const popular_products_module_1 = require("./popular-products/popular-products.module");
+const featured_categories_module_1 = require("./featured-categories/featured-categories.module");
+const navigation_module_1 = require("./navigation/navigation.module");
+const newsletter_module_1 = require("./newsletter/newsletter.module");
+const community_module_1 = require("./community/community.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -51,6 +58,13 @@ exports.AppModule = AppModule = __decorate([
             site_content_module_1.SiteContentModule,
             returns_module_1.ReturnsModule,
             delivery_module_1.DeliveryModule,
+            home_module_1.HomeModule,
+            featured_products_module_1.FeaturedProductsModule,
+            popular_products_module_1.PopularProductsModule,
+            featured_categories_module_1.FeaturedCategoriesModule,
+            navigation_module_1.NavigationModule,
+            newsletter_module_1.NewsletterModule,
+            community_module_1.CommunityModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, prisma_service_1.PrismaService],

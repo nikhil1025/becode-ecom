@@ -28,8 +28,6 @@ export declare class AdminAuthController {
         password: string;
         firstName: string;
         lastName: string;
-    }, req: {
-        user: User;
     }): Promise<{
         user: {
             id: string;

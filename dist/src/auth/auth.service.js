@@ -166,7 +166,7 @@ let AuthService = class AuthService {
             throw new common_1.InternalServerErrorException('Failed to login as admin');
         }
     }
-    async adminRegister(email, password, firstName, lastName, requestingUser) {
+    async adminRegister(email, password, firstName, lastName) {
         try {
             const adminCount = await this.prisma.user.count({
                 where: {
@@ -174,11 +174,7 @@ let AuthService = class AuthService {
                 },
             });
             if (adminCount > 0) {
-                if (!requestingUser ||
-                    (requestingUser.role !== 'ADMIN' &&
-                        requestingUser.role !== 'SUPERADMIN')) {
-                    throw new common_1.UnauthorizedException('Only administrators can create admin accounts');
-                }
+                throw new common_1.UnauthorizedException('Admin registration is closed. Please contact an existing administrator.');
             }
             if (!email || !password || !firstName || !lastName) {
                 throw new common_1.BadRequestException('All fields are required');

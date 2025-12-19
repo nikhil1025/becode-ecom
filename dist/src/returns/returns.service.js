@@ -60,9 +60,43 @@ let ReturnsService = class ReturnsService {
             return await this.prisma.return.findMany({
                 where: { userId },
                 include: {
-                    items: true,
+                    items: {
+                        include: {
+                            orderItem: {
+                                include: {
+                                    product: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            images: {
+                                                where: { isFeatured: true },
+                                                take: 1,
+                                            },
+                                        },
+                                    },
+                                    variant: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                        },
+                                    },
+                                },
+                            },
+                            exchangeProductRef: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    images: {
+                                        where: { isFeatured: true },
+                                        take: 1,
+                                    },
+                                },
+                            },
+                        },
+                    },
                     order: {
                         select: {
+                            id: true,
                             orderNumber: true,
                             createdAt: true,
                         },
@@ -79,7 +113,40 @@ let ReturnsService = class ReturnsService {
         try {
             return await this.prisma.return.findMany({
                 include: {
-                    items: true,
+                    items: {
+                        include: {
+                            orderItem: {
+                                include: {
+                                    product: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            images: {
+                                                where: { isFeatured: true },
+                                                take: 1,
+                                            },
+                                        },
+                                    },
+                                    variant: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                        },
+                                    },
+                                },
+                            },
+                            exchangeProductRef: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    images: {
+                                        where: { isFeatured: true },
+                                        take: 1,
+                                    },
+                                },
+                            },
+                        },
+                    },
                     user: {
                         select: {
                             id: true,
@@ -90,8 +157,10 @@ let ReturnsService = class ReturnsService {
                     },
                     order: {
                         select: {
+                            id: true,
                             orderNumber: true,
                             createdAt: true,
+                            total: true,
                         },
                     },
                 },

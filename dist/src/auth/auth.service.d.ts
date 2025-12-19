@@ -20,7 +20,7 @@ export declare class AuthService {
         user: UserWithoutPassword;
         token: string;
     }>;
-    adminRegister(email: string, password: string, firstName: string, lastName: string, requestingUser?: User): Promise<{
+    adminRegister(email: string, password: string, firstName: string, lastName: string): Promise<{
         user: UserWithoutPassword;
         token: string;
     }>;

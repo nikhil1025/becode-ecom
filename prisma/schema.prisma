@@ -80,7 +80,8 @@ model Category {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  products Product[]
+  products           Product[]
+  featuredCategories FeaturedCategory[]
 
   @@map("categories")
 }
@@ -126,12 +127,15 @@ model Product {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  images        ProductImage[]
-  variants      ProductVariant[]
-  reviews       Review[]
-  orderItems    OrderItem[]
-  wishlistItems WishlistItem[]
-  cartItems     CartItem[]
+  images           ProductImage[]
+  variants         ProductVariant[]
+  reviews          Review[]
+  orderItems       OrderItem[]
+  wishlistItems    WishlistItem[]
+  cartItems        CartItem[]
+  exchangeReturns  ReturnItem[]      @relation("ExchangeProducts")
+  featuredProducts FeaturedProduct[]
+  popularProducts  PopularProduct[]
 
   @@map("products")
 }
@@ -221,6 +225,7 @@ model OrderItem {
   quantity        Int
   price           Float
   productSnapshot Json // Store product details at time of order
+  returnItems     ReturnItem[]
   createdAt       DateTime        @default(now())
 
   @@map("order_items")
@@ -308,8 +313,15 @@ model WishlistItem {
 }
 
 enum ContentType {
-  TERMS_CONDITIONS
-  PRIVACY_POLICY
+  TERMS
+  PRIVACY
+  ABOUT
+  FAQS
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
 }
 
 enum ReturnType {
@@ -337,13 +349,19 @@ enum TrackingStatus {
 }
 
 model SiteContent {
-  id        String      @id @default(uuid())
-  type      ContentType @unique
-  title     String
-  content   String      @db.Text
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id            String        @id @default(uuid())
+  type          ContentType   @unique
+  slug          String        @unique
+  title         String
+  content       String        @db.Text
+  status        ContentStatus @default(DRAFT)
+  lastUpdatedBy String?
+  metadata      Json? // For FAQs: [{question: "", answer: ""}]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
+  @@index([slug])
+  @@index([status])
   @@map("site_content")
 }
 
@@ -366,13 +384,151 @@ model Return {
 }
 
 model ReturnItem {
-  id              String   @id @default(uuid())
-  returnId        String
-  return          Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
-  orderItemId     String
-  quantity        Int
-  exchangeProduct String?  @map("exchange_product_id")
-  createdAt       DateTime @default(now())
+  id                 String    @id @default(uuid())
+  returnId           String
+  return             Return    @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  orderItemId        String
+  orderItem          OrderItem @relation(fields: [orderItemId], references: [id])
+  quantity           Int
+  exchangeProductId  String?   @map("exchange_product_id")
+  exchangeProductRef Product?  @relation("ExchangeProducts", fields: [exchangeProductId], references: [id])
+  exchangeVariantId  String?   @map("exchange_variant_id")
+  createdAt          DateTime  @default(now())
 
   @@map("return_items")
+}
+
+// Homepage CMS Models
+
+model FeaturedProduct {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  priority  Int      @default(0) // Lower number = higher priority
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId])
+  @@index([priority])
+  @@index([isActive])
+  @@map("featured_products")
+}
+
+model PopularProduct {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  priority  Int      @default(0)
+  isActive  Boolean  @default(true)
+  score     Float    @default(0) // For future analytics-based ranking
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId])
+  @@index([priority])
+  @@index([isActive])
+  @@map("popular_products")
+}
+
+model FeaturedCategory {
+  id         String   @id @default(uuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  priority   Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([categoryId])
+  @@index([priority])
+  @@index([isActive])
+  @@map("featured_categories")
+}
+
+enum NavigationType {
+  CATEGORY
+  PAGE
+  CUSTOM
+}
+
+model NavigationTab {
+  id          String         @id @default(uuid())
+  type        NavigationType
+  refId       String? // categoryId or pageSlug
+  label       String
+  url         String? // For custom links
+  order       Int            @default(0)
+  isActive    Boolean        @default(true)
+  description String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([order])
+  @@index([isActive])
+  @@map("navigation_tabs")
+}
+
+model NewsletterSubscriber {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String?
+  isActive       Boolean   @default(true)
+  subscribedAt   DateTime  @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([email])
+  @@map("newsletter_subscribers")
+}
+
+model CommunityMember {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  interest  String?
+  status    String   @default("PENDING") // PENDING, CONTACTED, JOINED
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@map("community_members")
+}
+
+model HomepageConfig {
+  id              String   @id @default(uuid())
+  key             String   @unique // featured_products, popular_products, etc.
+  isEnabled       Boolean  @default(true)
+  sectionTitle    String?
+  sectionSubtitle String?
+  sectionOrder    Int      @default(0)
+  maxItems        Int      @default(8)
+  metaTitle       String?
+  metaDescription String?
+  customSettings  Json? // Additional configuration
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([key])
+  @@index([sectionOrder])
+  @@map("homepage_config")
+}
+
+// Audit Log Model for tracking admin actions
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String // CREATE, UPDATE, DELETE, REORDER, etc.
+  entityType String // Product, Category, FeaturedProduct, etc.
+  entityId   String
+  changes    Json? // Store old and new values
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

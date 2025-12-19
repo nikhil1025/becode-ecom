@@ -18,6 +18,13 @@ import { ReturnsModule } from './returns/returns.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SiteContentModule } from './site-content/site-content.module';
 import { WishlistModule } from './wishlist/wishlist.module';
+import { HomeModule } from './home/home.module';
+import { FeaturedProductsModule } from './featured-products/featured-products.module';
+import { PopularProductsModule } from './popular-products/popular-products.module';
+import { FeaturedCategoriesModule } from './featured-categories/featured-categories.module';
+import { NavigationModule } from './navigation/navigation.module';
+import { NewsletterModule } from './newsletter/newsletter.module';
+import { CommunityModule } from './community/community.module';
 
 @Module({
   imports: [
@@ -39,6 +46,13 @@ import { WishlistModule } from './wishlist/wishlist.module';
     SiteContentModule,
     ReturnsModule,
     DeliveryModule,
+    HomeModule,
+    FeaturedProductsModule,
+    PopularProductsModule,
+    FeaturedCategoriesModule,
+    NavigationModule,
+    NewsletterModule,
+    CommunityModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

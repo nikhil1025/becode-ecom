@@ -20,7 +20,9 @@ export class ProductsService {
     maxPrice?: number;
     search?: string;
     featured?: boolean;
-  }): Promise<any[]> {
+    page?: number;
+    limit?: number;
+  }): Promise<any> {
     try {
       // Validate price filters
       if (filters?.minPrice && filters.minPrice < 0) {
@@ -64,46 +66,55 @@ export class ProductsService {
         where.isFeatured = true;
       }
 
-      const products = await this.prisma.product.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          regularPrice: true,
-          salePrice: true,
-          stockQuantity: true,
-          averageRating: true,
-          reviewCount: true,
-          isFeatured: true,
-          images: {
-            where: { isFeatured: true },
-            take: 1,
-            select: {
-              url: true,
-              altText: true,
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 20;
+      const skip = (page - 1) * limit;
+
+      const [products, total] = await Promise.all([
+        this.prisma.product.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            regularPrice: true,
+            salePrice: true,
+            stockQuantity: true,
+            averageRating: true,
+            reviewCount: true,
+            isFeatured: true,
+            images: {
+              where: { isFeatured: true },
+              take: 1,
+              select: {
+                url: true,
+                altText: true,
+              },
+            },
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+            brand: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
             },
           },
-          category: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-          brand: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        this.prisma.product.count({ where }),
+      ]);
 
       // Transform to match expected structure with thumbnail
-      return products.map((product) => ({
+      const transformedProducts = products.map((product) => ({
         id: product.id,
         name: product.name,
         slug: product.slug,
@@ -125,6 +136,16 @@ export class ProductsService {
         category: product.category,
         brand: product.brand,
       }));
+
+      return {
+        products: transformedProducts,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -384,6 +405,157 @@ export class ProductsService {
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to upload product images: ' + error.message,
+      );
+    }
+  }
+
+  async findBySlug(slug: string): Promise<any> {
+    try {
+      if (!slug) {
+        throw new BadRequestException('Product slug is required');
+      }
+
+      const product = await this.prisma.product.findUnique({
+        where: { slug, status: 'PUBLISHED' },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          shortDescription: true,
+          longDescription: true,
+          regularPrice: true,
+          salePrice: true,
+          stockQuantity: true,
+          sku: true,
+          averageRating: true,
+          reviewCount: true,
+          isFeatured: true,
+          metaTitle: true,
+          metaDescription: true,
+          images: {
+            select: {
+              id: true,
+              url: true,
+              altText: true,
+              isFeatured: true,
+            },
+            orderBy: { isFeatured: 'desc' },
+          },
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          brand: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          variants: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              stockQuantity: true,
+            },
+          },
+          reviews: {
+            where: { status: 'APPROVED' },
+            select: {
+              id: true,
+              rating: true,
+              content: true,
+              createdAt: true,
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+          },
+        },
+      });
+
+      if (!product) {
+        throw new NotFoundException(`Product with slug "${slug}" not found`);
+      }
+
+      return product;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to retrieve product: ' + error.message,
+      );
+    }
+  }
+
+  async findAllAdmin(filters?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }): Promise<any> {
+    try {
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 20;
+      const skip = (page - 1) * limit;
+
+      const where: any = {};
+
+      if (filters?.search) {
+        where.OR = [
+          { name: { contains: filters.search, mode: 'insensitive' } },
+          { sku: { contains: filters.search, mode: 'insensitive' } },
+        ];
+      }
+
+      if (filters?.status) {
+        where.status = filters.status;
+      }
+
+      const [products, total] = await Promise.all([
+        this.prisma.product.findMany({
+          where,
+          include: {
+            images: {
+              where: { isFeatured: true },
+              take: 1,
+            },
+            category: true,
+            brand: true,
+            variants: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        this.prisma.product.count({ where }),
+      ]);
+
+      return {
+        products,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to retrieve admin products: ' + error.message,
       );
     }
   }

@@ -10,11 +10,20 @@ export declare class ProductsService {
         maxPrice?: number;
         search?: string;
         featured?: boolean;
-    }): Promise<any[]>;
+        page?: number;
+        limit?: number;
+    }): Promise<any>;
     findOne(id: string): Promise<any>;
     create(data: any): Promise<any>;
     update(id: string, data: any): Promise<any>;
     delete(id: string): Promise<any>;
     uploadImages(productId: string, files: Express.Multer.File[]): Promise<any>;
     uploadProductImages(files: Express.Multer.File[]): Promise<string[]>;
+    findBySlug(slug: string): Promise<any>;
+    findAllAdmin(filters?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        status?: string;
+    }): Promise<any>;
 }

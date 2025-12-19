@@ -23,7 +23,6 @@ export class AdminAuthController {
   }
 
   @Post('register')
-  @UseGuards(AdminJwtAuthGuard)
   async adminRegister(
     @Body()
     body: {
@@ -32,14 +31,12 @@ export class AdminAuthController {
       firstName: string;
       lastName: string;
     },
-    @Request() req: { user: User },
   ) {
     return this.authService.adminRegister(
       body.email,
       body.password,
       body.firstName,
       body.lastName,
-      req.user,
     );
   }
 

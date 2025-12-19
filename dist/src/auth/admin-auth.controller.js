@@ -25,8 +25,8 @@ let AdminAuthController = class AdminAuthController {
     async adminLogin(body) {
         return this.authService.adminLogin(body.email, body.password);
     }
-    async adminRegister(body, req) {
-        return this.authService.adminRegister(body.email, body.password, body.firstName, body.lastName, req.user);
+    async adminRegister(body) {
+        return this.authService.adminRegister(body.email, body.password, body.firstName, body.lastName);
     }
     getProfile(req) {
         return req.user;
@@ -48,11 +48,9 @@ __decorate([
 ], AdminAuthController.prototype, "adminLogin", null);
 __decorate([
     (0, common_1.Post)('register'),
-    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard),
     __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AdminAuthController.prototype, "adminRegister", null);
 __decorate([

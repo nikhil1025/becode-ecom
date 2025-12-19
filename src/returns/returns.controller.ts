@@ -46,13 +46,13 @@ export class ReturnsController {
     );
   }
 
-  @Get()
+  @Get('my-returns')
   @UseGuards(JwtAuthGuard)
   findByUser(@Request() req: { user: User }) {
     return this.returnsService.findByUser(req.user.id);
   }
 
-  @Get('admin/all')
+  @Get()
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
   findAll() {

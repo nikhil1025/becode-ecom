@@ -182,7 +182,6 @@ export class AuthService {
     password: string,
     firstName: string,
     lastName: string,
-    requestingUser?: User,
   ): Promise<{ user: UserWithoutPassword; token: string }> {
     try {
       // Check if any admin exists
@@ -192,17 +191,12 @@ export class AuthService {
         },
       });
 
-      // If admins exist, require authentication from an existing admin
+      // Allow first admin to be created without authentication
+      // After that, only authenticated admins can create new admins
       if (adminCount > 0) {
-        if (
-          !requestingUser ||
-          (requestingUser.role !== 'ADMIN' &&
-            requestingUser.role !== 'SUPERADMIN')
-        ) {
-          throw new UnauthorizedException(
-            'Only administrators can create admin accounts',
-          );
-        }
+        throw new UnauthorizedException(
+          'Admin registration is closed. Please contact an existing administrator.',
+        );
       }
 
       // Validate input

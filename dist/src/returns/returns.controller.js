@@ -49,7 +49,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReturnsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Get)(),
+    (0, common_1.Get)('my-returns'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -57,7 +57,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReturnsController.prototype, "findByUser", null);
 __decorate([
-    (0, common_1.Get)('admin/all'),
+    (0, common_1.Get)(),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
     __metadata("design:type", Function),

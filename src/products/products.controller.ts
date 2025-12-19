@@ -23,6 +23,7 @@ import { ProductsService } from './products.service';
 export class ProductsController {
   constructor(private productsService: ProductsService) {}
 
+  // Public endpoint for users/guests - limited data
   @Get()
   async findAll(
     @Query('category') category?: string,
@@ -30,6 +31,8 @@ export class ProductsController {
     @Query('maxPrice') maxPrice?: string,
     @Query('search') search?: string,
     @Query('featured') featured?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.productsService.findAll({
       category,
@@ -37,9 +40,36 @@ export class ProductsController {
       maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
       search,
       featured: featured === 'true',
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
     });
   }
 
+  // Public endpoint for single product by slug
+  @Get('slug/:slug')
+  async findBySlug(@Param('slug') slug: string): Promise<any> {
+    return this.productsService.findBySlug(slug);
+  }
+
+  // Admin endpoint for full product data with pagination
+  @Get('admin/all')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  async findAllAdmin(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.productsService.findAllAdmin({
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
+      search,
+      status,
+    });
+  }
+
+  // Public endpoint for single product by ID (legacy)
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<any> {
     return this.productsService.findOne(id);

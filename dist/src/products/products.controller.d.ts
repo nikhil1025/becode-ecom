@@ -3,7 +3,9 @@ import { ProductsService } from './products.service';
 export declare class ProductsController {
     private productsService;
     constructor(productsService: ProductsService);
-    findAll(category?: string, minPrice?: string, maxPrice?: string, search?: string, featured?: string): Promise<any[]>;
+    findAll(category?: string, minPrice?: string, maxPrice?: string, search?: string, featured?: string, page?: string, limit?: string): Promise<any>;
+    findBySlug(slug: string): Promise<any>;
+    findAllAdmin(page?: string, limit?: string, search?: string, status?: string): Promise<any>;
     findOne(id: string): Promise<any>;
     create(data: CreateProductDto, images?: Express.Multer.File[]): Promise<any>;
     update(id: string, data: UpdateProductDto, images?: Express.Multer.File[]): Promise<any>;

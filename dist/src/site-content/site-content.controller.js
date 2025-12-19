@@ -24,6 +24,9 @@ let SiteContentController = class SiteContentController {
     constructor(siteContentService) {
         this.siteContentService = siteContentService;
     }
+    findBySlug(slug) {
+        return this.siteContentService.findBySlug(slug);
+    }
     findAll() {
         return this.siteContentService.findAll();
     }
@@ -31,25 +34,129 @@ let SiteContentController = class SiteContentController {
         const contentType = type.toUpperCase();
         return this.siteContentService.findOne(contentType);
     }
-    update(type, body) {
+    create(req, body) {
+        const contentType = body.type.toUpperCase();
+        return this.siteContentService.create(contentType, body.title, body.content, body.status || client_1.ContentStatus.DRAFT, req.user.email, body.metadata);
+    }
+    update(req, type, body) {
+        const contentType = type.toUpperCase();
+        return this.siteContentService.update(contentType, {
+            ...body,
+            lastUpdatedBy: req.user.email,
+        });
+    }
+    publish(req, type) {
+        const contentType = type.toUpperCase();
+        return this.siteContentService.publish(contentType, req.user.email);
+    }
+    unpublish(req, type) {
+        const contentType = type.toUpperCase();
+        return this.siteContentService.unpublish(contentType, req.user.email);
+    }
+    delete(type) {
+        const contentType = type.toUpperCase();
+        return this.siteContentService.delete(contentType);
+    }
+    findAllLegacy() {
+        return this.siteContentService.findAll();
+    }
+    findOneLegacy(type) {
+        const contentType = type.toUpperCase();
+        return this.siteContentService.findOne(contentType);
+    }
+    updateLegacy(type, body) {
         const contentType = type.toUpperCase();
         return this.siteContentService.upsert(contentType, body.title, body.content);
     }
 };
 exports.SiteContentController = SiteContentController;
 __decorate([
-    (0, common_1.Get)(),
+    (0, common_1.Get)('public/:slug'),
+    __param(0, (0, common_1.Param)('slug')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], SiteContentController.prototype, "findBySlug", null);
+__decorate([
+    (0, common_1.Get)('admin'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SiteContentController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('admin/:type'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Param)('type')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], SiteContentController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Post)('admin'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], SiteContentController.prototype, "create", null);
+__decorate([
+    (0, common_1.Put)('admin/:type'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('type')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], SiteContentController.prototype, "update", null);
+__decorate([
+    (0, common_1.Put)('admin/:type/publish'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('type')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], SiteContentController.prototype, "publish", null);
+__decorate([
+    (0, common_1.Put)('admin/:type/unpublish'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('type')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], SiteContentController.prototype, "unpublish", null);
+__decorate([
+    (0, common_1.Delete)('admin/:type'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Param)('type')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], SiteContentController.prototype, "delete", null);
+__decorate([
+    (0, common_1.Get)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], SiteContentController.prototype, "findAllLegacy", null);
 __decorate([
     (0, common_1.Get)(':type'),
     __param(0, (0, common_1.Param)('type')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
-], SiteContentController.prototype, "findOne", null);
+], SiteContentController.prototype, "findOneLegacy", null);
 __decorate([
     (0, common_1.Put)(':type'),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
@@ -59,9 +166,9 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
-], SiteContentController.prototype, "update", null);
+], SiteContentController.prototype, "updateLegacy", null);
 exports.SiteContentController = SiteContentController = __decorate([
-    (0, common_1.Controller)('site-content'),
+    (0, common_1.Controller)('cms'),
     __metadata("design:paramtypes", [site_content_service_1.SiteContentService])
 ], SiteContentController);
 //# sourceMappingURL=site-content.controller.js.map

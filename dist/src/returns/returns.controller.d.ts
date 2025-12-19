@@ -41,8 +41,9 @@ export declare class ReturnsController {
             createdAt: Date;
             quantity: number;
             returnId: string;
+            exchangeVariantId: string | null;
             orderItemId: string;
-            exchangeProduct: string | null;
+            exchangeProductId: string | null;
         }[];
     } & {
         comments: string | null;
@@ -59,17 +60,61 @@ export declare class ReturnsController {
         user: User;
     }): Promise<({
         order: {
+            id: string;
             createdAt: Date;
             orderNumber: string;
         };
-        items: {
+        items: ({
+            orderItem: {
+                product: {
+                    name: string;
+                    id: string;
+                    images: {
+                        url: string;
+                        id: string;
+                        createdAt: Date;
+                        isFeatured: boolean;
+                        productId: string;
+                        position: number;
+                        altText: string | null;
+                    }[];
+                };
+                variant: {
+                    name: string;
+                    id: string;
+                } | null;
+            } & {
+                id: string;
+                createdAt: Date;
+                productId: string;
+                variantId: string | null;
+                quantity: number;
+                price: number;
+                orderId: string;
+                productSnapshot: import("@prisma/client/runtime/client").JsonValue;
+            };
+            exchangeProductRef: {
+                name: string;
+                id: string;
+                images: {
+                    url: string;
+                    id: string;
+                    createdAt: Date;
+                    isFeatured: boolean;
+                    productId: string;
+                    position: number;
+                    altText: string | null;
+                }[];
+            } | null;
+        } & {
             id: string;
             createdAt: Date;
             quantity: number;
             returnId: string;
+            exchangeVariantId: string | null;
             orderItemId: string;
-            exchangeProduct: string | null;
-        }[];
+            exchangeProductId: string | null;
+        })[];
     } & {
         comments: string | null;
         id: string;
@@ -89,17 +134,62 @@ export declare class ReturnsController {
             email: string;
         };
         order: {
+            id: string;
             createdAt: Date;
+            total: number;
             orderNumber: string;
         };
-        items: {
+        items: ({
+            orderItem: {
+                product: {
+                    name: string;
+                    id: string;
+                    images: {
+                        url: string;
+                        id: string;
+                        createdAt: Date;
+                        isFeatured: boolean;
+                        productId: string;
+                        position: number;
+                        altText: string | null;
+                    }[];
+                };
+                variant: {
+                    name: string;
+                    id: string;
+                } | null;
+            } & {
+                id: string;
+                createdAt: Date;
+                productId: string;
+                variantId: string | null;
+                quantity: number;
+                price: number;
+                orderId: string;
+                productSnapshot: import("@prisma/client/runtime/client").JsonValue;
+            };
+            exchangeProductRef: {
+                name: string;
+                id: string;
+                images: {
+                    url: string;
+                    id: string;
+                    createdAt: Date;
+                    isFeatured: boolean;
+                    productId: string;
+                    position: number;
+                    altText: string | null;
+                }[];
+            } | null;
+        } & {
             id: string;
             createdAt: Date;
             quantity: number;
             returnId: string;
+            exchangeVariantId: string | null;
             orderItemId: string;
-            exchangeProduct: string | null;
-        }[];
+            exchangeProductId: string | null;
+        })[];
     } & {
         comments: string | null;
         id: string;
@@ -139,8 +229,9 @@ export declare class ReturnsController {
             createdAt: Date;
             quantity: number;
             returnId: string;
+            exchangeVariantId: string | null;
             orderItemId: string;
-            exchangeProduct: string | null;
+            exchangeProductId: string | null;
         }[];
     } & {
         comments: string | null;
