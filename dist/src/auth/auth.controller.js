@@ -36,6 +36,9 @@ let AuthController = class AuthController {
     getProfile(req) {
         return req.user;
     }
+    async updateProfile(req, body) {
+        return this.authService.updateProfile(req.user.id, body);
+    }
     async uploadAvatar(req, file) {
         return this.authService.uploadAvatar(req.user.id, file);
     }
@@ -54,6 +57,12 @@ let AuthController = class AuthController {
     }
     async changePassword(req, body) {
         return await this.authService.changePassword(req.user.id, body.currentPassword, body.newPassword);
+    }
+    async hasPassword(req) {
+        return await this.authService.hasPassword(req.user.id);
+    }
+    async createPassword(req, body) {
+        return await this.authService.createPassword(req.user.id, body.newPassword);
     }
 };
 exports.AuthController = AuthController;
@@ -79,6 +88,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "getProfile", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('profile'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "updateProfile", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Post)('profile/avatar'),
@@ -128,6 +146,23 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "changePassword", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('has-password'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "hasPassword", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('create-password'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "createPassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

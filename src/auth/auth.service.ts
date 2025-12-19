@@ -325,6 +325,65 @@ export class AuthService {
     return userWithoutPassword;
   }
 
+  async updateProfile(
+    userId: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+    },
+  ): Promise<UserWithoutPassword> {
+    try {
+      if (!userId) {
+        throw new BadRequestException('User ID is required');
+      }
+
+      // Validate data
+      if (data.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(data.email)) {
+          throw new BadRequestException('Invalid email format');
+        }
+
+        // Check if email is already taken by another user
+        const existingUser = await this.prisma.user.findFirst({
+          where: {
+            email: data.email,
+            NOT: { id: userId },
+          },
+        });
+
+        if (existingUser) {
+          throw new ConflictException('Email is already in use');
+        }
+      }
+
+      // Update user
+      const updateData: any = {};
+      if (data.firstName !== undefined) updateData.firstName = data.firstName;
+      if (data.lastName !== undefined) updateData.lastName = data.lastName;
+      if (data.email !== undefined) updateData.email = data.email;
+      if (data.phone !== undefined) updateData.phone = data.phone;
+
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to update profile');
+    }
+  }
+
   async forgotPassword(email: string): Promise<{ message: string }> {
     try {
       if (!email) {
@@ -476,6 +535,79 @@ export class AuthService {
         throw error;
       }
       throw new InternalServerErrorException('Failed to change password');
+    }
+  }
+
+  async hasPassword(userId: string): Promise<{ hasPassword: boolean }> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { googleId: true, password: true },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      // User has password if they don't have a googleId or if password is set
+      // For Google users, password might be empty or a placeholder
+      const hasPassword = !user.googleId || user.password !== '';
+
+      return { hasPassword };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to check password status');
+    }
+  }
+
+  async createPassword(
+    userId: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    try {
+      if (!newPassword) {
+        throw new BadRequestException('New password is required');
+      }
+
+      if (newPassword.length < 6) {
+        throw new BadRequestException(
+          'Password must be at least 6 characters long',
+        );
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      // Check if user already has a password
+      if (!user.googleId) {
+        throw new BadRequestException('User already has a password');
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+
+      return { message: 'Password has been created successfully' };
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create password');
     }
   }
 }

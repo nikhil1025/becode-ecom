@@ -28,17 +28,24 @@ export declare class AuthService {
     generateJwtToken(user: UserWithoutPassword): string;
     uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
         id: string;
-        email: string;
-        googleId: string | null;
         firstName: string | null;
         lastName: string | null;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        email: string;
+        googleId: string | null;
         avatar: string | null;
         role: import("@prisma/client").$Enums.UserRole;
         emailVerified: boolean;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
+    updateProfile(userId: string, data: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+    }): Promise<UserWithoutPassword>;
     forgotPassword(email: string): Promise<{
         message: string;
     }>;
@@ -46,6 +53,12 @@ export declare class AuthService {
         message: string;
     }>;
     changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{
+        message: string;
+    }>;
+    hasPassword(userId: string): Promise<{
+        hasPassword: boolean;
+    }>;
+    createPassword(userId: string, newPassword: string): Promise<{
         message: string;
     }>;
 }

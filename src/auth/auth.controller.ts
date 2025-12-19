@@ -52,6 +52,21 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('profile')
+  async updateProfile(
+    @Request() req: { user: User },
+    @Body()
+    body: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+    },
+  ) {
+    return this.authService.updateProfile(req.user.id, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('profile/avatar')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(
@@ -103,5 +118,20 @@ export class AuthController {
       body.currentPassword,
       body.newPassword,
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('has-password')
+  async hasPassword(@Request() req: { user: User }) {
+    return await this.authService.hasPassword(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('create-password')
+  async createPassword(
+    @Request() req: { user: User },
+    @Body() body: { newPassword: string },
+  ) {
+    return await this.authService.createPassword(req.user.id, body.newPassword);
   }
 }

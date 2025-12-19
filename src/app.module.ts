@@ -8,12 +8,15 @@ import { BrandsModule } from './brands/brands.module';
 import { CartModule } from './cart/cart.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ContactModule } from './contact/contact.module';
+import { DeliveryModule } from './delivery/delivery.module';
 import { MailModule } from './mail/mail.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaService } from './prisma.service';
 import { ProductsModule } from './products/products.module';
+import { ReturnsModule } from './returns/returns.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { SiteContentModule } from './site-content/site-content.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 
 @Module({
@@ -33,6 +36,9 @@ import { WishlistModule } from './wishlist/wishlist.module';
     MailModule,
     ContactModule,
     PaymentsModule,
+    SiteContentModule,
+    ReturnsModule,
+    DeliveryModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

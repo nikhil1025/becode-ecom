@@ -71,8 +71,8 @@ export declare class OrdersService {
             variantId: string | null;
             quantity: number;
             price: number;
-            productSnapshot: import("@prisma/client/runtime/client").JsonValue;
             orderId: string;
+            productSnapshot: import("@prisma/client/runtime/client").JsonValue;
         })[];
     } & {
         id: string;
@@ -84,13 +84,15 @@ export declare class OrdersService {
         tax: number;
         shipping: number;
         total: number;
-        shippingAddress: import("@prisma/client/runtime/client").JsonValue;
-        billingAddress: import("@prisma/client/runtime/client").JsonValue;
         orderNumber: string;
         paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
         discount: number;
+        shippingAddress: import("@prisma/client/runtime/client").JsonValue;
+        billingAddress: import("@prisma/client/runtime/client").JsonValue;
         paymentMethod: string | null;
         notes: string | null;
+        trackingStatus: import("@prisma/client").$Enums.TrackingStatus;
+        deliveryAgentId: string | null;
     }>;
     getUserOrders(userId: string): Promise<any[]>;
     getOrderById(userId: string, orderId: string): Promise<any>;

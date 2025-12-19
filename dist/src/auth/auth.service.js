@@ -274,6 +274,50 @@ let AuthService = class AuthService {
         const { password: _, ...userWithoutPassword } = updated;
         return userWithoutPassword;
     }
+    async updateProfile(userId, data) {
+        try {
+            if (!userId) {
+                throw new common_1.BadRequestException('User ID is required');
+            }
+            if (data.email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(data.email)) {
+                    throw new common_1.BadRequestException('Invalid email format');
+                }
+                const existingUser = await this.prisma.user.findFirst({
+                    where: {
+                        email: data.email,
+                        NOT: { id: userId },
+                    },
+                });
+                if (existingUser) {
+                    throw new common_1.ConflictException('Email is already in use');
+                }
+            }
+            const updateData = {};
+            if (data.firstName !== undefined)
+                updateData.firstName = data.firstName;
+            if (data.lastName !== undefined)
+                updateData.lastName = data.lastName;
+            if (data.email !== undefined)
+                updateData.email = data.email;
+            if (data.phone !== undefined)
+                updateData.phone = data.phone;
+            const user = await this.prisma.user.update({
+                where: { id: userId },
+                data: updateData,
+            });
+            const { password: _, ...userWithoutPassword } = user;
+            return userWithoutPassword;
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException ||
+                error instanceof common_1.ConflictException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to update profile');
+        }
+    }
     async forgotPassword(email) {
         try {
             if (!email) {
@@ -370,6 +414,57 @@ let AuthService = class AuthService {
                 throw error;
             }
             throw new common_1.InternalServerErrorException('Failed to change password');
+        }
+    }
+    async hasPassword(userId) {
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: { googleId: true, password: true },
+            });
+            if (!user) {
+                throw new common_1.UnauthorizedException('User not found');
+            }
+            const hasPassword = !user.googleId || user.password !== '';
+            return { hasPassword };
+        }
+        catch (error) {
+            if (error instanceof common_1.UnauthorizedException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to check password status');
+        }
+    }
+    async createPassword(userId, newPassword) {
+        try {
+            if (!newPassword) {
+                throw new common_1.BadRequestException('New password is required');
+            }
+            if (newPassword.length < 6) {
+                throw new common_1.BadRequestException('Password must be at least 6 characters long');
+            }
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+            });
+            if (!user) {
+                throw new common_1.UnauthorizedException('User not found');
+            }
+            if (!user.googleId) {
+                throw new common_1.BadRequestException('User already has a password');
+            }
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            await this.prisma.user.update({
+                where: { id: userId },
+                data: { password: hashedPassword },
+            });
+            return { message: 'Password has been created successfully' };
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException ||
+                error instanceof common_1.UnauthorizedException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to create password');
         }
     }
 };

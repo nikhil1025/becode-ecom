@@ -13,16 +13,17 @@ export declare class AuthController {
     }): Promise<{
         user: {
             id: string;
-            email: string;
-            googleId: string | null;
             firstName: string | null;
             lastName: string | null;
+            phone: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            email: string;
+            googleId: string | null;
             avatar: string | null;
             role: import("@prisma/client").$Enums.UserRole;
             emailVerified: boolean;
             isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
         };
         token: string;
     }>;
@@ -32,36 +33,59 @@ export declare class AuthController {
     }): Promise<{
         user: {
             id: string;
-            email: string;
-            googleId: string | null;
             firstName: string | null;
             lastName: string | null;
+            phone: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            email: string;
+            googleId: string | null;
             avatar: string | null;
             role: import("@prisma/client").$Enums.UserRole;
             emailVerified: boolean;
             isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
         };
         token: string;
     }>;
     getProfile(req: {
         user: unknown;
     }): unknown;
-    uploadAvatar(req: {
+    updateProfile(req: {
         user: User;
-    }, file: Express.Multer.File): Promise<{
+    }, body: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+    }): Promise<{
         id: string;
-        email: string;
-        googleId: string | null;
         firstName: string | null;
         lastName: string | null;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        email: string;
+        googleId: string | null;
         avatar: string | null;
         role: import("@prisma/client").$Enums.UserRole;
         emailVerified: boolean;
         isActive: boolean;
+    }>;
+    uploadAvatar(req: {
+        user: User;
+    }, file: Express.Multer.File): Promise<{
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        phone: string | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
+        googleId: string | null;
+        avatar: string | null;
+        role: import("@prisma/client").$Enums.UserRole;
+        emailVerified: boolean;
+        isActive: boolean;
     }>;
     googleAuth(): void;
     googleAuthCallback(req: {
@@ -82,6 +106,18 @@ export declare class AuthController {
         user: User;
     }, body: {
         currentPassword: string;
+        newPassword: string;
+    }): Promise<{
+        message: string;
+    }>;
+    hasPassword(req: {
+        user: User;
+    }): Promise<{
+        hasPassword: boolean;
+    }>;
+    createPassword(req: {
+        user: User;
+    }, body: {
         newPassword: string;
     }): Promise<{
         message: string;

@@ -80,6 +80,32 @@ export class CartService {
 
       const cart = await this.getCart(userId);
 
+      // Check product stock
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId },
+        include: { variants: true },
+      });
+
+      if (!product) {
+        throw new NotFoundException('Product not found');
+      }
+
+      // Validate stock
+      let availableStock = product.stockQuantity;
+      if (variantId) {
+        const variant = product.variants.find((v) => v.id === variantId);
+        if (!variant) {
+          throw new NotFoundException('Product variant not found');
+        }
+        availableStock = variant.stockQuantity;
+      }
+
+      if (availableStock < quantity) {
+        throw new BadRequestException(
+          `Insufficient stock. Only ${availableStock} available`,
+        );
+      }
+
       const existingItem = await this.prisma.cartItem.findFirst({
         where: {
           cartId: cart.id,
@@ -89,9 +115,17 @@ export class CartService {
       });
 
       if (existingItem) {
+        // Check if new total quantity exceeds stock
+        const newQuantity = existingItem.quantity + quantity;
+        if (newQuantity > availableStock) {
+          throw new BadRequestException(
+            `Cannot add ${quantity} more. Maximum ${availableStock - existingItem.quantity} can be added`,
+          );
+        }
+
         return this.prisma.cartItem.update({
           where: { id: existingItem.id },
-          data: { quantity: existingItem.quantity + quantity },
+          data: { quantity: newQuantity },
           include: {
             product: {
               include: {
@@ -101,14 +135,6 @@ export class CartService {
             variant: true,
           },
         });
-      }
-
-      const product = await this.prisma.product.findUnique({
-        where: { id: productId },
-      });
-
-      if (!product) {
-        throw new NotFoundException('Product not found');
       }
 
       const price = product.salePrice || product.regularPrice;
@@ -166,10 +192,26 @@ export class CartService {
           id: itemId,
           cartId: cart.id,
         },
+        include: {
+          product: true,
+          variant: true,
+        },
       });
 
       if (!existingItem) {
         throw new NotFoundException('Cart item not found');
+      }
+
+      // Check stock availability
+      let availableStock = existingItem.product.stockQuantity;
+      if (existingItem.variant) {
+        availableStock = existingItem.variant.stockQuantity;
+      }
+
+      if (quantity > availableStock) {
+        throw new BadRequestException(
+          `Requested quantity exceeds available stock. Only ${availableStock} available`,
+        );
       }
 
       return this.prisma.cartItem.update({

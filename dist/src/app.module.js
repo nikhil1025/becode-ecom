@@ -17,12 +17,15 @@ const brands_module_1 = require("./brands/brands.module");
 const cart_module_1 = require("./cart/cart.module");
 const categories_module_1 = require("./categories/categories.module");
 const contact_module_1 = require("./contact/contact.module");
+const delivery_module_1 = require("./delivery/delivery.module");
 const mail_module_1 = require("./mail/mail.module");
 const orders_module_1 = require("./orders/orders.module");
 const payments_module_1 = require("./payments/payments.module");
 const prisma_service_1 = require("./prisma.service");
 const products_module_1 = require("./products/products.module");
+const returns_module_1 = require("./returns/returns.module");
 const reviews_module_1 = require("./reviews/reviews.module");
+const site_content_module_1 = require("./site-content/site-content.module");
 const wishlist_module_1 = require("./wishlist/wishlist.module");
 let AppModule = class AppModule {
 };
@@ -45,6 +48,9 @@ exports.AppModule = AppModule = __decorate([
             mail_module_1.MailModule,
             contact_module_1.ContactModule,
             payments_module_1.PaymentsModule,
+            site_content_module_1.SiteContentModule,
+            returns_module_1.ReturnsModule,
+            delivery_module_1.DeliveryModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, prisma_service_1.PrismaService],

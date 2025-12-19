@@ -45,10 +45,11 @@ enum ReviewStatus {
 model User {
   id            String   @id @default(uuid())
   email         String   @unique
-  password      String
+  password      String   @default("")
   googleId      String?  @unique
   firstName     String?
   lastName      String?
+  phone         String?
   avatar        String?
   role          UserRole @default(CUSTOMER)
   emailVerified Boolean  @default(false)
@@ -61,6 +62,7 @@ model User {
   addresses     Address[]
   cart          Cart?
   wishlistItems WishlistItem[]
+  returns       Return[]
 
   @@map("users")
 }
@@ -167,27 +169,45 @@ model ProductVariant {
 }
 
 model Order {
-  id              String        @id @default(uuid())
-  orderNumber     String        @unique
+  id              String         @id @default(uuid())
+  orderNumber     String         @unique
   userId          String
-  user            User          @relation(fields: [userId], references: [id])
-  status          OrderStatus   @default(PENDING)
-  paymentStatus   PaymentStatus @default(PENDING)
+  user            User           @relation(fields: [userId], references: [id])
+  status          OrderStatus    @default(PENDING)
+  paymentStatus   PaymentStatus  @default(PENDING)
   subtotal        Float
-  tax             Float         @default(0)
-  shipping        Float         @default(0)
-  discount        Float         @default(0)
+  tax             Float          @default(0)
+  shipping        Float          @default(0)
+  discount        Float          @default(0)
   total           Float
   shippingAddress Json
   billingAddress  Json
   paymentMethod   String?
   notes           String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  trackingStatus  TrackingStatus @default(ORDER_PLACED)
+  deliveryAgentId String?
+  deliveryAgent   DeliveryAgent? @relation(fields: [deliveryAgentId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  items OrderItem[]
+  items   OrderItem[]
+  returns Return[]
 
   @@map("orders")
+}
+
+model DeliveryAgent {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String
+  vehicleInfo String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders Order[]
+
+  @@map("delivery_agents")
 }
 
 model OrderItem {
@@ -285,4 +305,74 @@ model WishlistItem {
 
   @@unique([userId, productId])
   @@map("wishlist_items")
+}
+
+enum ContentType {
+  TERMS_CONDITIONS
+  PRIVACY_POLICY
+}
+
+enum ReturnType {
+  RETURN
+  EXCHANGE
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum TrackingStatus {
+  ORDER_PLACED
+  CONFIRMED
+  PACKED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+model SiteContent {
+  id        String      @id @default(uuid())
+  type      ContentType @unique
+  title     String
+  content   String      @db.Text
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("site_content")
+}
+
+model Return {
+  id        String       @id @default(uuid())
+  orderId   String
+  order     Order        @relation(fields: [orderId], references: [id])
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  type      ReturnType
+  status    ReturnStatus @default(PENDING)
+  reason    String
+  comments  String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  items ReturnItem[]
+
+  @@map("returns")
+}
+
+model ReturnItem {
+  id              String   @id @default(uuid())
+  returnId        String
+  return          Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  orderItemId     String
+  quantity        Int
+  exchangeProduct String?  @map("exchange_product_id")
+  createdAt       DateTime @default(now())
+
+  @@map("return_items")
 }

@@ -9,16 +9,17 @@ export declare class AdminAuthController {
     }): Promise<{
         user: {
             id: string;
-            email: string;
-            googleId: string | null;
             firstName: string | null;
             lastName: string | null;
+            phone: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            email: string;
+            googleId: string | null;
             avatar: string | null;
             role: import("@prisma/client").$Enums.UserRole;
             emailVerified: boolean;
             isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
         };
         token: string;
     }>;
@@ -32,16 +33,17 @@ export declare class AdminAuthController {
     }): Promise<{
         user: {
             id: string;
-            email: string;
-            googleId: string | null;
             firstName: string | null;
             lastName: string | null;
+            phone: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            email: string;
+            googleId: string | null;
             avatar: string | null;
             role: import("@prisma/client").$Enums.UserRole;
             emailVerified: boolean;
             isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
         };
         token: string;
     }>;
@@ -52,16 +54,17 @@ export declare class AdminAuthController {
         user: User;
     }, file: Express.Multer.File): Promise<{
         id: string;
-        email: string;
-        googleId: string | null;
         firstName: string | null;
         lastName: string | null;
+        phone: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        email: string;
+        googleId: string | null;
         avatar: string | null;
         role: import("@prisma/client").$Enums.UserRole;
         emailVerified: boolean;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     changePassword(req: {
         user: User;

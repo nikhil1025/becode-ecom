@@ -55,16 +55,63 @@ let ProductsService = class ProductsService {
             if (filters?.featured) {
                 where.isFeatured = true;
             }
-            return this.prisma.product.findMany({
+            const products = await this.prisma.product.findMany({
                 where,
-                include: {
-                    images: true,
-                    category: true,
-                    brand: true,
-                    reviews: true
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    regularPrice: true,
+                    salePrice: true,
+                    stockQuantity: true,
+                    averageRating: true,
+                    reviewCount: true,
+                    isFeatured: true,
+                    images: {
+                        where: { isFeatured: true },
+                        take: 1,
+                        select: {
+                            url: true,
+                            altText: true,
+                        },
+                    },
+                    category: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                        },
+                    },
+                    brand: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                        },
+                    },
                 },
                 orderBy: { createdAt: 'desc' },
             });
+            return products.map((product) => ({
+                id: product.id,
+                name: product.name,
+                slug: product.slug,
+                price: product.regularPrice,
+                salePrice: product.salePrice,
+                discount: product.salePrice
+                    ? Math.round(((product.regularPrice - product.salePrice) /
+                        product.regularPrice) *
+                        100)
+                    : 0,
+                thumbnail: product.images[0]?.url || null,
+                thumbnailAlt: product.images[0]?.altText || product.name,
+                stock: product.stockQuantity,
+                averageRating: product.averageRating,
+                reviewCount: product.reviewCount,
+                isFeatured: product.isFeatured,
+                category: product.category,
+                brand: product.brand,
+            }));
         }
         catch (error) {
             if (error instanceof common_1.BadRequestException) {
