@@ -56,6 +56,13 @@ export class OrdersController {
     return this.ordersService.getAllOrders(Number(page), Number(limit));
   }
 
+  @Get('admin/:orderId')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  async getAdminOrderById(@Param('orderId') orderId: string): Promise<any> {
+    return this.ordersService.getAdminOrderById(orderId);
+  }
+
   @Get(':orderId')
   @UseGuards(JwtAuthGuard)
   async getOrderById(
@@ -76,9 +83,20 @@ export class OrdersController {
   }
 
   @Put(':orderId/payment-status')
+  @UseGuards(JwtAuthGuard)
+  async updatePaymentStatus(
+    @Request() req: { user: { userId: string } },
+    @Param('orderId') orderId: string,
+    @Body() body: { paymentStatus: PaymentStatus },
+  ): Promise<any> {
+    // Allow user to update their own order payment status (for Razorpay callback)
+    return this.ordersService.updatePaymentStatus(orderId, body.paymentStatus);
+  }
+
+  @Put(':orderId/admin/payment-status')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  async updatePaymentStatus(
+  async adminUpdatePaymentStatus(
     @Param('orderId') orderId: string,
     @Body() body: { paymentStatus: PaymentStatus },
   ): Promise<any> {

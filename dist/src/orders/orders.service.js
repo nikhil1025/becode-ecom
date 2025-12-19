@@ -355,6 +355,67 @@ let OrdersService = class OrdersService {
             throw new common_1.InternalServerErrorException('Failed to retrieve orders: ' + error.message);
         }
     }
+    async getAdminOrderById(orderId) {
+        try {
+            if (!orderId) {
+                throw new common_1.BadRequestException('Order ID is required');
+            }
+            const order = await this.prisma.order.findUnique({
+                where: { id: orderId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            firstName: true,
+                            lastName: true,
+                            phone: true,
+                            avatar: true,
+                        },
+                    },
+                    deliveryAgent: true,
+                    items: {
+                        include: {
+                            product: {
+                                include: {
+                                    images: true,
+                                },
+                            },
+                            variant: true,
+                        },
+                    },
+                },
+            });
+            if (!order) {
+                throw new common_1.NotFoundException('Order not found');
+            }
+            const returns = await this.prisma.return.findMany({
+                where: { orderId: order.id },
+                include: {
+                    items: {
+                        include: {
+                            orderItem: {
+                                include: {
+                                    product: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+            return {
+                ...order,
+                returns,
+            };
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException ||
+                error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to retrieve order: ' + error.message);
+        }
+    }
     async getOrderTracking(userId, orderId) {
         try {
             if (!userId || !orderId) {
@@ -466,6 +527,7 @@ let OrdersService = class OrdersService {
     }
     async getAllReturns(page = 1, limit = 20) {
         try {
+            await Promise.resolve();
             return {
                 returns: [],
                 pagination: {
@@ -485,6 +547,7 @@ let OrdersService = class OrdersService {
             if (!returnId || !status) {
                 throw new common_1.BadRequestException('Return ID and status are required');
             }
+            await Promise.resolve();
             return {
                 id: returnId,
                 status,

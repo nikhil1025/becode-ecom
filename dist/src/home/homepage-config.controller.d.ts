@@ -1,5 +1,5 @@
-import { PrismaService } from '../prisma.service';
 import { AuditLogService } from '../common/audit-log.service';
+import { PrismaService } from '../prisma.service';
 export declare class HomepageConfigController {
     private prisma;
     private auditLog;

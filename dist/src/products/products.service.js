@@ -71,10 +71,13 @@ let ProductsService = class ProductsService {
                         averageRating: true,
                         reviewCount: true,
                         isFeatured: true,
+                        longDescription: true,
+                        shortDescription: true,
+                        sku: true,
+                        status: true,
                         images: {
-                            where: { isFeatured: true },
-                            take: 1,
                             select: {
+                                id: true,
                                 url: true,
                                 altText: true,
                             },
@@ -119,6 +122,11 @@ let ProductsService = class ProductsService {
                 isFeatured: product.isFeatured,
                 category: product.category,
                 brand: product.brand,
+                images: product.images,
+                shortDescription: product.shortDescription,
+                longDescription: product.longDescription,
+                sku: product.sku,
+                status: product.status,
             }));
             return {
                 products: transformedProducts,

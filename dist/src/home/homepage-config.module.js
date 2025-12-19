@@ -8,9 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HomepageConfigModule = void 0;
 const common_1 = require("@nestjs/common");
+const audit_log_service_1 = require("../common/audit-log.service");
 const prisma_service_1 = require("../prisma.service");
 const homepage_config_controller_1 = require("./homepage-config.controller");
-const audit_log_service_1 = require("../common/audit-log.service");
 let HomepageConfigModule = class HomepageConfigModule {
 };
 exports.HomepageConfigModule = HomepageConfigModule;

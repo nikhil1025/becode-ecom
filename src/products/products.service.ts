@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { S3Service } from '../storage/s3.service';
+import { stat } from 'fs';
 
 @Injectable()
 export class ProductsService {
@@ -83,10 +84,13 @@ export class ProductsService {
             averageRating: true,
             reviewCount: true,
             isFeatured: true,
+            longDescription: true,
+            shortDescription: true,
+            sku: true,
+            status: true,
             images: {
-              where: { isFeatured: true },
-              take: 1,
               select: {
+                id: true,
                 url: true,
                 altText: true,
               },
@@ -135,6 +139,11 @@ export class ProductsService {
         isFeatured: product.isFeatured,
         category: product.category,
         brand: product.brand,
+        images: product.images,
+        shortDescription: product.shortDescription,
+        longDescription: product.longDescription,
+        sku: product.sku,
+        status: product.status,
       }));
 
       return {

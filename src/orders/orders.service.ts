@@ -426,6 +426,77 @@ export class OrdersService {
     }
   }
 
+  async getAdminOrderById(orderId: string): Promise<any> {
+    try {
+      if (!orderId) {
+        throw new BadRequestException('Order ID is required');
+      }
+
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              avatar: true,
+            },
+          },
+          deliveryAgent: true,
+          items: {
+            include: {
+              product: {
+                include: {
+                  images: true,
+                },
+              },
+              variant: true,
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+
+      // Get return info if exists
+      const returns = await this.prisma.return.findMany({
+        where: { orderId: order.id },
+        include: {
+          items: {
+            include: {
+              orderItem: {
+                include: {
+                  product: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Tracking info is already included in the order (trackingStatus, deliveryAgent)
+      return {
+        ...order,
+        returns,
+      };
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to retrieve order: ' + error.message,
+      );
+    }
+  }
+
   async getOrderTracking(userId: string, orderId: string): Promise<any> {
     try {
       if (!userId || !orderId) {
@@ -583,6 +654,7 @@ export class OrdersService {
   ): Promise<{ returns: any[]; pagination: any }> {
     try {
       // Simplified - would query Return model in production
+      await Promise.resolve();
       return {
         returns: [],
         pagination: {
@@ -604,6 +676,7 @@ export class OrdersService {
       if (!returnId || !status) {
         throw new BadRequestException('Return ID and status are required');
       }
+      await Promise.resolve();
 
       // Simplified - would update Return model in production
       return {

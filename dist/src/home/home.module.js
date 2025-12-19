@@ -8,12 +8,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HomeModule = void 0;
 const common_1 = require("@nestjs/common");
+const audit_log_controller_1 = require("../common/audit-log.controller");
+const audit_log_service_1 = require("../common/audit-log.service");
 const prisma_service_1 = require("../prisma.service");
 const home_controller_1 = require("./home.controller");
 const home_service_1 = require("./home.service");
 const homepage_config_controller_1 = require("./homepage-config.controller");
-const audit_log_service_1 = require("../common/audit-log.service");
-const audit_log_controller_1 = require("../common/audit-log.controller");
 let HomeModule = class HomeModule {
 };
 exports.HomeModule = HomeModule;

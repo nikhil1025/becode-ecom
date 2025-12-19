@@ -103,6 +103,7 @@ export declare class OrdersService {
         orders: any[];
         pagination: any;
     }>;
+    getAdminOrderById(orderId: string): Promise<any>;
     getOrderTracking(userId: string, orderId: string): Promise<any>;
     requestReturn(userId: string, orderId: string, reason: string, items?: string[]): Promise<any>;
     getAllReturns(page?: number, limit?: number): Promise<{

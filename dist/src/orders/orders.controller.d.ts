@@ -26,6 +26,7 @@ export declare class OrdersController {
         orders: any[];
         pagination: any;
     }>;
+    getAdminOrderById(orderId: string): Promise<any>;
     getOrderById(req: {
         user: {
             userId: string;
@@ -34,7 +35,14 @@ export declare class OrdersController {
     updateOrderStatus(orderId: string, body: {
         status: OrderStatus;
     }): Promise<any>;
-    updatePaymentStatus(orderId: string, body: {
+    updatePaymentStatus(req: {
+        user: {
+            userId: string;
+        };
+    }, orderId: string, body: {
+        paymentStatus: PaymentStatus;
+    }): Promise<any>;
+    adminUpdatePaymentStatus(orderId: string, body: {
         paymentStatus: PaymentStatus;
     }): Promise<any>;
     cancelOrder(req: {

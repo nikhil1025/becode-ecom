@@ -18,8 +18,8 @@ const client_1 = require("@prisma/client");
 const admin_jwt_auth_guard_1 = require("../auth/admin-jwt-auth.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const roles_guard_1 = require("../auth/roles.guard");
-const prisma_service_1 = require("../prisma.service");
 const audit_log_service_1 = require("../common/audit-log.service");
+const prisma_service_1 = require("../prisma.service");
 let HomepageConfigController = class HomepageConfigController {
     prisma;
     auditLog;
@@ -28,12 +28,12 @@ let HomepageConfigController = class HomepageConfigController {
         this.auditLog = auditLog;
     }
     async getAll() {
-        return this.prisma.homepageConfig.findMany({
+        return await this.prisma.homepageConfig.findMany({
             orderBy: { sectionOrder: 'asc' },
         });
     }
     async getByKey(key) {
-        return this.prisma.homepageConfig.findUnique({
+        return await this.prisma.homepageConfig.findUnique({
             where: { key },
         });
     }
