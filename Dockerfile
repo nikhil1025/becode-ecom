@@ -67,6 +67,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/startup.sh ./
+
+# Make startup script executable
+RUN chmod +x startup.sh
 
 # Create uploads directory
 RUN mkdir -p /app/uploads/products \
@@ -86,8 +90,9 @@ EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+    CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
 # Start command: Generate Prisma → Run Migrations → Start App
 # .env file MUST exist before this runs (created by deployment script)
-CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/main"]
+# CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/main"]
+CMD ["./startup.sh"]
