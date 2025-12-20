@@ -1,0 +1,4 @@
+-- AlterEnum: Add new values to OrderItemStatus
+ALTER TYPE "OrderItemStatus" ADD VALUE IF NOT EXISTS 'SHIPPED';
+ALTER TYPE "OrderItemStatus" ADD VALUE IF NOT EXISTS 'DELIVERED';
+ALTER TYPE "OrderItemStatus" ADD VALUE IF NOT EXISTS 'RETURN_REQUESTED';

@@ -56,11 +56,17 @@ let ReturnsService = class ReturnsService {
                 if (!orderItem || orderItem.orderId !== orderId) {
                     throw new common_1.BadRequestException(`Order item ${item.orderItemId} is not valid for this order.`);
                 }
+                if (orderItem.status !== 'DELIVERED') {
+                    throw new common_1.BadRequestException(`Cannot return item ${item.orderItemId}. Item must be delivered first. Current status: ${orderItem.status}`);
+                }
                 if (orderItem.status === 'CANCELLED') {
                     throw new common_1.BadRequestException(`Cannot return cancelled item ${item.orderItemId}. Item was already cancelled.`);
                 }
                 if (orderItem.status === 'RETURNED') {
                     throw new common_1.BadRequestException(`Cannot return item ${item.orderItemId}. Item was already returned.`);
+                }
+                if (orderItem.status === 'RETURN_REQUESTED') {
+                    throw new common_1.BadRequestException(`Cannot return item ${item.orderItemId}. A return request is already pending for this item.`);
                 }
                 if (item.quantity > orderItem.quantity) {
                     throw new common_1.BadRequestException(`Cannot return more items than were purchased for ${orderItem.id}.`);
@@ -106,6 +112,12 @@ let ReturnsService = class ReturnsService {
                     },
                 },
             });
+            for (const item of items) {
+                await tx.orderItem.update({
+                    where: { id: item.orderItemId },
+                    data: { status: 'RETURN_REQUESTED' },
+                });
+            }
             let imageUrls = [];
             if (files && files.length > 0) {
                 const uploadedImages = await this.fileUploadService.uploadMultipleImages(files, `returns/${createdReturn.id}`);
@@ -389,6 +401,15 @@ let ReturnsService = class ReturnsService {
                                 data: { stockQuantity: { increment: item.quantity } },
                             });
                         }
+                    }
+                }
+                if (status === client_1.ReturnStatus.REJECTED ||
+                    status === client_1.ReturnStatus.CANCELLED) {
+                    for (const item of currentReturn.items) {
+                        await tx.orderItem.update({
+                            where: { id: item.orderItemId },
+                            data: { status: 'DELIVERED' },
+                        });
                     }
                 }
                 const statusHistory = currentReturn.statusHistory || [];

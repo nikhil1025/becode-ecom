@@ -34,8 +34,11 @@ enum PaymentStatus {
 
 enum OrderItemStatus {
   PLACED
-  CANCELLED
+  SHIPPED
+  DELIVERED
+  RETURN_REQUESTED
   RETURNED
+  CANCELLED
 }
 
 enum ProductStatus {

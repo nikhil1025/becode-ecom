@@ -441,47 +441,76 @@ export class OrdersService {
 
       const existingOrder = await this.prisma.order.findUnique({
         where: { id: orderId },
+        include: { items: true },
       });
 
       if (!existingOrder) {
         throw new NotFoundException('Order not found');
       }
 
-      const order = await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status },
-        include: {
-          items: {
-            include: {
-              product: {
-                include: {
-                  images: true,
+      return await this.prisma.$transaction(async (tx) => {
+        // Update order status
+        const order = await tx.order.update({
+          where: { id: orderId },
+          data: { status },
+          include: {
+            items: {
+              include: {
+                product: {
+                  include: {
+                    images: true,
+                  },
                 },
               },
             },
+            user: true,
           },
-          user: true,
-        },
-      });
+        });
 
-      // Send email notification based on status
-      if (order.user?.email) {
-        try {
-          if (status === OrderStatus.SHIPPED) {
-            await this.mailService.sendOrderShipped(order.user.email, {
-              orderId: order.orderNumber,
-            });
-          } else if (status === OrderStatus.DELIVERED) {
-            await this.mailService.sendOrderDelivered(order.user.email, {
-              orderId: order.orderNumber,
-            });
-          }
-        } catch (error) {
-          console.error('Failed to send order status email:', error);
+        // CRITICAL: Update item statuses based on order status
+        let itemStatus: OrderItemStatus | null = null;
+        if (status === OrderStatus.SHIPPED) {
+          itemStatus = OrderItemStatus.SHIPPED;
+        } else if (status === OrderStatus.DELIVERED) {
+          itemStatus = OrderItemStatus.DELIVERED;
         }
-      }
 
-      return order;
+        // Update all items that are not cancelled or returned
+        if (itemStatus) {
+          await tx.orderItem.updateMany({
+            where: {
+              orderId: orderId,
+              status: {
+                notIn: [
+                  OrderItemStatus.CANCELLED,
+                  OrderItemStatus.RETURNED,
+                  OrderItemStatus.RETURN_REQUESTED,
+                ],
+              },
+            },
+            data: { status: itemStatus },
+          });
+        }
+
+        // Send email notification based on status
+        if (order.user?.email) {
+          try {
+            if (status === OrderStatus.SHIPPED) {
+              await this.mailService.sendOrderShipped(order.user.email, {
+                orderId: order.orderNumber,
+              });
+            } else if (status === OrderStatus.DELIVERED) {
+              await this.mailService.sendOrderDelivered(order.user.email, {
+                orderId: order.orderNumber,
+              });
+            }
+          } catch (error) {
+            console.error('Failed to send order status email:', error);
+          }
+        }
+
+        return order;
+      });
     } catch (error) {
       if (
         error instanceof BadRequestException ||

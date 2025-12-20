@@ -79,6 +79,13 @@ export class ReturnsService {
           );
         }
 
+        // CRITICAL: Only allow returns for DELIVERED items
+        if (orderItem.status !== ('DELIVERED' as any)) {
+          throw new BadRequestException(
+            `Cannot return item ${item.orderItemId}. Item must be delivered first. Current status: ${orderItem.status}`,
+          );
+        }
+
         // CRITICAL: Prevent returning cancelled items
         if (orderItem.status === 'CANCELLED') {
           throw new BadRequestException(
@@ -90,6 +97,13 @@ export class ReturnsService {
         if (orderItem.status === 'RETURNED') {
           throw new BadRequestException(
             `Cannot return item ${item.orderItemId}. Item was already returned.`,
+          );
+        }
+
+        // CRITICAL: Prevent duplicate return requests
+        if (orderItem.status === 'RETURN_REQUESTED') {
+          throw new BadRequestException(
+            `Cannot return item ${item.orderItemId}. A return request is already pending for this item.`,
           );
         }
 
@@ -156,6 +170,14 @@ export class ReturnsService {
           },
         },
       });
+
+      // 3.5 CRITICAL: Update OrderItem status to RETURN_REQUESTED
+      for (const item of items) {
+        await tx.orderItem.update({
+          where: { id: item.orderItemId },
+          data: { status: 'RETURN_REQUESTED' as any },
+        });
+      }
 
       // 4. Handle image uploads using the pipeline
       let imageUrls: string[] = [];
@@ -493,6 +515,20 @@ export class ReturnsService {
                 data: { stockQuantity: { increment: item.quantity } },
               });
             }
+          }
+        }
+
+        // CRITICAL: Reset OrderItem status when return is REJECTED
+        if (
+          status === ReturnStatus.REJECTED ||
+          status === ReturnStatus.CANCELLED
+        ) {
+          for (const item of currentReturn.items) {
+            // Reset to DELIVERED status
+            await tx.orderItem.update({
+              where: { id: item.orderItemId },
+              data: { status: 'DELIVERED' as any },
+            });
           }
         }
 

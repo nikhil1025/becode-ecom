@@ -339,44 +339,69 @@ let OrdersService = class OrdersService {
             }
             const existingOrder = await this.prisma.order.findUnique({
                 where: { id: orderId },
+                include: { items: true },
             });
             if (!existingOrder) {
                 throw new common_1.NotFoundException('Order not found');
             }
-            const order = await this.prisma.order.update({
-                where: { id: orderId },
-                data: { status },
-                include: {
-                    items: {
-                        include: {
-                            product: {
-                                include: {
-                                    images: true,
+            return await this.prisma.$transaction(async (tx) => {
+                const order = await tx.order.update({
+                    where: { id: orderId },
+                    data: { status },
+                    include: {
+                        items: {
+                            include: {
+                                product: {
+                                    include: {
+                                        images: true,
+                                    },
                                 },
                             },
                         },
+                        user: true,
                     },
-                    user: true,
-                },
+                });
+                let itemStatus = null;
+                if (status === client_1.OrderStatus.SHIPPED) {
+                    itemStatus = client_1.OrderItemStatus.SHIPPED;
+                }
+                else if (status === client_1.OrderStatus.DELIVERED) {
+                    itemStatus = client_1.OrderItemStatus.DELIVERED;
+                }
+                if (itemStatus) {
+                    await tx.orderItem.updateMany({
+                        where: {
+                            orderId: orderId,
+                            status: {
+                                notIn: [
+                                    client_1.OrderItemStatus.CANCELLED,
+                                    client_1.OrderItemStatus.RETURNED,
+                                    client_1.OrderItemStatus.RETURN_REQUESTED,
+                                ],
+                            },
+                        },
+                        data: { status: itemStatus },
+                    });
+                }
+                if (order.user?.email) {
+                    try {
+                        if (status === client_1.OrderStatus.SHIPPED) {
+                            await this.mailService.sendOrderShipped(order.user.email, {
+                                orderId: order.orderNumber,
+                            });
+                        }
+                        else if (status === client_1.OrderStatus.DELIVERED) {
+                            await this.mailService.sendOrderDelivered(order.user.email, {
+                                orderId: order.orderNumber,
+                            });
+                        }
+                    }
+                    catch (error) {
+                        console.error('Failed to send order status email:', error);
+                    }
+                }
+                return order;
             });
-            if (order.user?.email) {
-                try {
-                    if (status === client_1.OrderStatus.SHIPPED) {
-                        await this.mailService.sendOrderShipped(order.user.email, {
-                            orderId: order.orderNumber,
-                        });
-                    }
-                    else if (status === client_1.OrderStatus.DELIVERED) {
-                        await this.mailService.sendOrderDelivered(order.user.email, {
-                            orderId: order.orderNumber,
-                        });
-                    }
-                }
-                catch (error) {
-                    console.error('Failed to send order status email:', error);
-                }
-            }
-            return order;
         }
         catch (error) {
             if (error instanceof common_1.BadRequestException ||
