@@ -65,15 +65,16 @@ jobs:
       - name: Create Deployment Package
         run: |
           echo "📦 Creating deployment archive..."
-          tar -czf backend-deploy.tar.gz \
+          tar -czf ../backend-deploy.tar.gz \
             --exclude='node_modules' \
             --exclude='.git' \
             --exclude='test' \
             --exclude='coverage' \
             --exclude='uploads' \
             --exclude='.env*' \
-            --exclude='backend-deploy.tar.gz' \
+            --exclude='*.log' \
             .
+          mv ../backend-deploy.tar.gz ./
           ls -lh backend-deploy.tar.gz
 
       # =================================
