@@ -15,6 +15,7 @@ import { $Enums } from '@prisma/client';
 import { AdminJwtAuthGuard } from '../auth/admin-jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { imageFileFilter } from '../common/utils/file-filters';
 import { BrandsService } from './brands.service';
 
 @Controller('brands')
@@ -34,7 +35,7 @@ export class BrandsController {
   @Post()
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(FileInterceptor('logo'))
+  @UseInterceptors(FileInterceptor('logo', { fileFilter: imageFileFilter }))
   async create(
     @Body() data: { name: string; slug: string },
     @UploadedFile() logo?: Express.Multer.File,
@@ -48,7 +49,7 @@ export class BrandsController {
   @Put(':id')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(FileInterceptor('logo'))
+  @UseInterceptors(FileInterceptor('logo', { fileFilter: imageFileFilter }))
   async update(
     @Param('id') id: string,
     @Body() data: { name?: string; slug?: string },

@@ -16,6 +16,7 @@ import { $Enums } from '@prisma/client';
 import { AdminJwtAuthGuard } from '../auth/admin-jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { imageFileFilter } from '../common/utils/file-filters';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { ProductsService } from './products.service';
 
@@ -78,7 +79,9 @@ export class ProductsController {
   @Post()
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(FilesInterceptor('images', 10))
+  @UseInterceptors(
+    FilesInterceptor('images', 10, { fileFilter: imageFileFilter }),
+  )
   async create(
     @Body() data: CreateProductDto,
     @UploadedFiles() images?: Express.Multer.File[],
@@ -93,7 +96,9 @@ export class ProductsController {
   @Put(':id')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(FilesInterceptor('images', 10))
+  @UseInterceptors(
+    FilesInterceptor('images', 10, { fileFilter: imageFileFilter }),
+  )
   async update(
     @Param('id') id: string,
     @Body() data: UpdateProductDto,
@@ -116,10 +121,33 @@ export class ProductsController {
     return this.productsService.delete(id);
   }
 
+  @Get('admin/deleted')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  async findDeleted() {
+    return this.productsService.findDeletedProducts();
+  }
+
+  @Put(':id/restore')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  async restore(@Param('id') id: string) {
+    return this.productsService.restore(id);
+  }
+
+  @Delete(':id/force')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.SUPERADMIN) // Only SUPERADMIN can force delete
+  async forceDelete(@Param('id') id: string) {
+    return this.productsService.forceDeleteProduct(id);
+  }
+
   @Post(':id/images')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(FilesInterceptor('files', 10))
+  @UseInterceptors(
+    FilesInterceptor('files', 10, { fileFilter: imageFileFilter }),
+  )
   async uploadImages(
     @Param('id') id: string,
     @UploadedFiles() files: Express.Multer.File[],

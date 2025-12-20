@@ -12,13 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BrandsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma.service");
-const s3_service_1 = require("../storage/s3.service");
+const file_upload_service_1 = require("../common/services/file-upload.service");
 let BrandsService = class BrandsService {
     prisma;
-    s3;
-    constructor(prisma, s3) {
+    fileUploadService;
+    constructor(prisma, fileUploadService) {
         this.prisma = prisma;
-        this.s3 = s3;
+        this.fileUploadService = fileUploadService;
     }
     async findAll() {
         try {
@@ -156,18 +156,10 @@ let BrandsService = class BrandsService {
     }
     async uploadLogo(file) {
         try {
-            console.log('Uploading logo:', {
-                originalname: file.originalname,
-                mimetype: file.mimetype,
-                size: file.size,
-                buffer: file.buffer ? 'present' : 'missing',
-            });
-            const { url } = await this.s3.uploadProductImage('brands', file);
-            console.log('Logo uploaded successfully:', url);
+            const { url } = await this.fileUploadService.uploadImage(file, 'brands', { width: 300, height: 300 });
             return url;
         }
         catch (error) {
-            console.error('Logo upload error:', error);
             throw new common_1.InternalServerErrorException('Failed to upload brand logo: ' + error.message);
         }
     }
@@ -176,6 +168,6 @@ exports.BrandsService = BrandsService;
 exports.BrandsService = BrandsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        s3_service_1.S3Service])
+        file_upload_service_1.FileUploadService])
 ], BrandsService);
 //# sourceMappingURL=brands.service.js.map

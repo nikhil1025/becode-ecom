@@ -15,6 +15,7 @@ import { $Enums } from '@prisma/client';
 import { AdminJwtAuthGuard } from '../auth/admin-jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { imageFileFilter } from '../common/utils/file-filters';
 import { CategoriesService } from './categories.service';
 
 @Controller('categories')
@@ -39,7 +40,7 @@ export class CategoriesController {
   @Post()
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(FileInterceptor('image', { fileFilter: imageFileFilter }))
   async create(
     @Body()
     data: {
@@ -60,7 +61,7 @@ export class CategoriesController {
   @Put(':id')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(FileInterceptor('image', { fileFilter: imageFileFilter }))
   async update(
     @Param('id') id: string,
     @Body()

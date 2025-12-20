@@ -15,7 +15,12 @@ let AdminJwtAuthGuard = class AdminJwtAuthGuard extends (0, passport_1.AuthGuard
     }
     handleRequest(err, user, info) {
         if (err || !user) {
-            throw err || new Error('Unauthorized - Invalid admin token');
+            console.error('[AdminJwtAuthGuard] Auth failed:', {
+                error: err?.message,
+                info: info?.message,
+                hasUser: !!user,
+            });
+            throw new common_1.UnauthorizedException('Unauthorized - Invalid or missing admin token');
         }
         return user;
     }

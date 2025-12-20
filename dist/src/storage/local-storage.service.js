@@ -57,48 +57,27 @@ let LocalStorageService = class LocalStorageService {
     }
     async ensureUploadDir() {
         try {
-            await fs.mkdir(this.uploadDir, { recursive: true });
-            await fs.mkdir(path.join(this.uploadDir, 'avatars'), { recursive: true });
-            await fs.mkdir(path.join(this.uploadDir, 'products'), {
-                recursive: true,
-            });
-            await fs.mkdir(path.join(this.uploadDir, 'brands'), { recursive: true });
-            await fs.mkdir(path.join(this.uploadDir, 'categories'), {
-                recursive: true,
-            });
+            const dirs = ['avatars', 'products', 'brands', 'categories', 'returns'];
+            for (const dir of dirs) {
+                await fs.mkdir(path.join(this.uploadDir, dir), { recursive: true });
+            }
         }
         catch (error) {
             console.error('Failed to create upload directories:', error);
         }
     }
-    async uploadAvatar(userId, file) {
+    async upload(buffer, pathPrefix, extension = 'webp') {
         try {
-            const ext = (file.originalname.split('.').pop() || 'png').toLowerCase();
-            const filename = `${userId}-${(0, crypto_1.randomUUID)()}.${ext}`;
-            const key = `avatars/${filename}`;
+            const filename = `${(0, crypto_1.randomUUID)()}.${extension}`;
+            const key = `${pathPrefix}/${filename}`;
             const filePath = path.join(this.uploadDir, key);
             await fs.mkdir(path.dirname(filePath), { recursive: true });
-            await fs.writeFile(filePath, file.buffer);
+            await fs.writeFile(filePath, buffer);
             const url = `${this.baseUrl}/uploads/${key}`;
             return { url, key };
         }
         catch (error) {
-            throw new common_1.InternalServerErrorException('Failed to upload avatar: ' + error.message);
-        }
-    }
-    async uploadProductImage(productId, file) {
-        try {
-            const ext = (file.originalname.split('.').pop() || 'png').toLowerCase();
-            const filename = `${(0, crypto_1.randomUUID)()}.${ext}`;
-            const key = `products/${productId}/${filename}`;
-            const filePath = path.join(this.uploadDir, key);
-            await fs.mkdir(path.dirname(filePath), { recursive: true });
-            await fs.writeFile(filePath, file.buffer);
-            const url = `${this.baseUrl}/uploads/${key}`;
-            return { url, key };
-        }
-        catch (error) {
-            throw new common_1.InternalServerErrorException('Failed to upload product image: ' + error.message);
+            throw new common_1.InternalServerErrorException(`Failed to upload file to ${pathPrefix}: ${error.message}`);
         }
     }
 };

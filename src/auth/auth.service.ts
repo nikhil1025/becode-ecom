@@ -39,24 +39,35 @@ export class AuthService {
         );
       }
 
-      // Check if user already exists
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email },
-      });
+      const user = await this.prisma.$transaction(async (tx) => {
+        // Check if user already exists
+        const existingUser = await tx.user.findUnique({
+          where: { email },
+        });
 
-      if (existingUser) {
-        throw new ConflictException('User with this email already exists');
-      }
+        if (existingUser) {
+          throw new ConflictException('User with this email already exists');
+        }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-      const user = await this.prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          firstName,
-          lastName,
-        },
+        const newUser = await tx.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            firstName,
+            lastName,
+          },
+        });
+
+        // Create a wallet for the new user
+        await tx.wallet.create({
+          data: {
+            userId: newUser.id,
+          },
+        });
+
+        return newUser;
       });
 
       const token = this.jwtService.sign({

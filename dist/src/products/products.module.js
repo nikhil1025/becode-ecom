@@ -8,8 +8,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductsModule = void 0;
 const common_1 = require("@nestjs/common");
+const common_module_1 = require("../common/common.module");
 const prisma_service_1 = require("../prisma.service");
-const s3_service_1 = require("../storage/s3.service");
 const products_controller_1 = require("./products.controller");
 const products_service_1 = require("./products.service");
 let ProductsModule = class ProductsModule {
@@ -17,7 +17,8 @@ let ProductsModule = class ProductsModule {
 exports.ProductsModule = ProductsModule;
 exports.ProductsModule = ProductsModule = __decorate([
     (0, common_1.Module)({
-        providers: [products_service_1.ProductsService, prisma_service_1.PrismaService, s3_service_1.S3Service],
+        imports: [common_module_1.CommonModule],
+        providers: [products_service_1.ProductsService, prisma_service_1.PrismaService],
         controllers: [products_controller_1.ProductsController],
     })
 ], ProductsModule);

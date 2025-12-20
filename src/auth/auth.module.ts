@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { PrismaService } from '../prisma.service';
 import { S3Service } from '../storage/s3.service';
+import { WalletModule } from '../wallet/wallet.module';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminJwtStrategy } from './admin-jwt.strategy';
 import { AuthController } from './auth.controller';
@@ -27,6 +28,7 @@ import { JwtStrategy } from './jwt.strategy';
       },
       inject: [ConfigService],
     }),
+    WalletModule,
   ],
   providers: [
     AuthService,

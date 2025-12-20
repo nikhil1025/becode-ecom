@@ -25,6 +25,8 @@ import { FeaturedCategoriesModule } from './featured-categories/featured-categor
 import { NavigationModule } from './navigation/navigation.module';
 import { NewsletterModule } from './newsletter/newsletter.module';
 import { CommunityModule } from './community/community.module';
+import { WalletModule } from './wallet/wallet.module';
+import { RefundsModule } from './refunds/refunds.module';
 
 @Module({
   imports: [
@@ -53,6 +55,8 @@ import { CommunityModule } from './community/community.module';
     NavigationModule,
     NewsletterModule,
     CommunityModule,
+    WalletModule,
+    RefundsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

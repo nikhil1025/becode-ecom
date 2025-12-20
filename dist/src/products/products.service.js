@@ -12,13 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma.service");
-const s3_service_1 = require("../storage/s3.service");
+const file_upload_service_1 = require("../common/services/file-upload.service");
 let ProductsService = class ProductsService {
     prisma;
-    s3;
-    constructor(prisma, s3) {
+    fileUploadService;
+    constructor(prisma, fileUploadService) {
         this.prisma = prisma;
-        this.s3 = s3;
+        this.fileUploadService = fileUploadService;
     }
     async findAll(filters) {
         try {
@@ -33,7 +33,10 @@ let ProductsService = class ProductsService {
                 filters.minPrice > filters.maxPrice) {
                 throw new common_1.BadRequestException('Minimum price cannot exceed maximum price');
             }
-            const where = { status: 'PUBLISHED' };
+            const where = {
+                status: 'PUBLISHED',
+                isDeleted: false,
+            };
             if (filters?.category) {
                 where.category = { slug: filters.category };
             }
@@ -151,7 +154,10 @@ let ProductsService = class ProductsService {
                 throw new common_1.BadRequestException('Product ID is required');
             }
             const product = await this.prisma.product.findUnique({
-                where: { id },
+                where: {
+                    id,
+                    isDeleted: false,
+                },
                 include: {
                     images: true,
                     category: true,
@@ -267,12 +273,22 @@ let ProductsService = class ProductsService {
             }
             const existingProduct = await this.prisma.product.findUnique({
                 where: { id },
+                include: {
+                    orderItems: true,
+                },
             });
             if (!existingProduct) {
                 throw new common_1.NotFoundException(`Product with ID ${id} not found`);
             }
-            return this.prisma.product.delete({
+            if (existingProduct.orderItems && existingProduct.orderItems.length > 0) {
+                throw new common_1.BadRequestException('Cannot delete product that is linked to existing orders. Use soft delete instead.');
+            }
+            return this.prisma.product.update({
                 where: { id },
+                data: {
+                    isDeleted: true,
+                    deletedAt: new Date(),
+                },
             });
         }
         catch (error) {
@@ -281,6 +297,36 @@ let ProductsService = class ProductsService {
                 throw error;
             }
             throw new common_1.InternalServerErrorException('Failed to delete product: ' + error.message);
+        }
+    }
+    async restore(id) {
+        try {
+            if (!id) {
+                throw new common_1.BadRequestException('Product ID is required');
+            }
+            const existingProduct = await this.prisma.product.findUnique({
+                where: { id },
+            });
+            if (!existingProduct) {
+                throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+            }
+            if (!existingProduct.isDeleted) {
+                throw new common_1.BadRequestException('Product is not deleted');
+            }
+            return this.prisma.product.update({
+                where: { id },
+                data: {
+                    isDeleted: false,
+                    deletedAt: null,
+                },
+            });
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException ||
+                error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to restore product: ' + error.message);
         }
     }
     async uploadImages(productId, files) {
@@ -297,19 +343,17 @@ let ProductsService = class ProductsService {
             if (!product) {
                 throw new common_1.NotFoundException('Product not found');
             }
-            const uploadedImages = [];
-            for (const file of files) {
-                const { url } = await this.s3.uploadProductImage(productId, file);
-                const image = await this.prisma.productImage.create({
-                    data: {
-                        productId,
-                        url,
-                        altText: product.name,
-                    },
-                });
-                uploadedImages.push(image);
-            }
-            return uploadedImages;
+            const resizeOptions = { width: 800, height: 800 };
+            const pathPrefix = `products/${productId}`;
+            const uploadedImagesData = await this.fileUploadService.uploadMultipleImages(files, pathPrefix, resizeOptions);
+            const createdImages = await this.prisma.productImage.createMany({
+                data: uploadedImagesData.map((img) => ({
+                    productId,
+                    url: img.url,
+                    altText: product.name,
+                })),
+            });
+            return createdImages;
         }
         catch (error) {
             if (error instanceof common_1.BadRequestException ||
@@ -324,9 +368,10 @@ let ProductsService = class ProductsService {
             if (!files || files.length === 0) {
                 return [];
             }
-            const uploadPromises = files.map((file) => this.s3.uploadProductImage('temp', file));
-            const uploadResults = await Promise.all(uploadPromises);
-            return uploadResults.map((result) => result.url);
+            const resizeOptions = { width: 800, height: 800 };
+            const pathPrefix = 'products/temp';
+            const uploadedImagesData = await this.fileUploadService.uploadMultipleImages(files, pathPrefix, resizeOptions);
+            return uploadedImagesData.map((result) => result.url);
         }
         catch (error) {
             throw new common_1.InternalServerErrorException('Failed to upload product images: ' + error.message);
@@ -464,11 +509,69 @@ let ProductsService = class ProductsService {
             throw new common_1.InternalServerErrorException('Failed to retrieve admin products: ' + error.message);
         }
     }
+    async findDeletedProducts() {
+        try {
+            return this.prisma.product.findMany({
+                where: { isDeleted: true, includeDeleted: true },
+            });
+        }
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Failed to retrieve deleted products: ' + error.message);
+        }
+    }
+    async restoreProduct(id) {
+        try {
+            if (!id) {
+                throw new common_1.BadRequestException('Product ID is required');
+            }
+            const product = await this.prisma.product.findUnique({
+                where: { id, includeDeleted: true },
+            });
+            if (!product) {
+                throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+            }
+            return this.prisma.product.update({
+                where: { id },
+                data: { isDeleted: false },
+            });
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException ||
+                error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to restore product: ' + error.message);
+        }
+    }
+    async forceDeleteProduct(id) {
+        try {
+            if (!id) {
+                throw new common_1.BadRequestException('Product ID is required');
+            }
+            const product = await this.prisma.product.findUnique({
+                where: { id, includeDeleted: true },
+            });
+            if (!product) {
+                throw new common_1.NotFoundException(`Product with ID ${id} not found`);
+            }
+            await this.prisma.product.delete({
+                where: { id, forceDelete: true },
+            });
+            return { message: `Product ${id} permanently deleted.` };
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException ||
+                error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to permanently delete product: ' + error.message);
+        }
+    }
 };
 exports.ProductsService = ProductsService;
 exports.ProductsService = ProductsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        s3_service_1.S3Service])
+        file_upload_service_1.FileUploadService])
 ], ProductsService);
 //# sourceMappingURL=products.service.js.map

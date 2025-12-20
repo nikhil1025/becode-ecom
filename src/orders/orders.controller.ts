@@ -14,6 +14,7 @@ import { AdminJwtAuthGuard } from '../auth/admin-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { CancelItemsDto } from './dto';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
@@ -56,6 +57,16 @@ export class OrdersController {
     return this.ordersService.getAllOrders(Number(page), Number(limit));
   }
 
+  @Get('admin/cancelled')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  async getCancelledOrders(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    return this.ordersService.getCancelledOrders(Number(page), Number(limit));
+  }
+
   @Get('admin/:orderId')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
@@ -70,6 +81,20 @@ export class OrdersController {
     @Param('orderId') orderId: string,
   ): Promise<any> {
     return this.ordersService.getOrderById(req.user.userId, orderId);
+  }
+
+  @Post(':orderId/cancel-items')
+  @UseGuards(JwtAuthGuard)
+  async cancelOrderItems(
+    @Request() req: { user: { userId: string } },
+    @Param('orderId') orderId: string,
+    @Body() cancelItemsDto: CancelItemsDto,
+  ) {
+    return this.ordersService.cancelOrderItems(
+      req.user.userId,
+      orderId,
+      cancelItemsDto,
+    );
   }
 
   @Put(':orderId/status')
@@ -103,15 +128,6 @@ export class OrdersController {
     return this.ordersService.updatePaymentStatus(orderId, body.paymentStatus);
   }
 
-  @Put(':orderId/cancel')
-  @UseGuards(JwtAuthGuard)
-  async cancelOrder(
-    @Request() req: { user: { userId: string } },
-    @Param('orderId') orderId: string,
-  ): Promise<any> {
-    return this.ordersService.cancelOrder(req.user.userId, orderId);
-  }
-
   @Get(':orderId/tracking')
   @UseGuards(JwtAuthGuard)
   async getOrderTracking(
@@ -119,37 +135,5 @@ export class OrdersController {
     @Param('orderId') orderId: string,
   ): Promise<any> {
     return this.ordersService.getOrderTracking(req.user.userId, orderId);
-  }
-
-  @Post(':orderId/return')
-  @UseGuards(JwtAuthGuard)
-  async requestReturn(
-    @Request() req: { user: { userId: string } },
-    @Param('orderId') orderId: string,
-    @Body() body: { reason: string; items?: string[] },
-  ): Promise<any> {
-    return this.ordersService.requestReturn(
-      req.user.userId,
-      orderId,
-      body.reason,
-      body.items,
-    );
-  }
-
-  @Get('admin/returns')
-  @UseGuards(AdminJwtAuthGuard, RolesGuard)
-  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  async getAllReturns(@Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.ordersService.getAllReturns(Number(page), Number(limit));
-  }
-
-  @Put('admin/returns/:returnId/status')
-  @UseGuards(AdminJwtAuthGuard, RolesGuard)
-  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  async updateReturnStatus(
-    @Param('returnId') returnId: string,
-    @Body() body: { status: string },
-  ): Promise<any> {
-    return this.ordersService.updateReturnStatus(returnId, body.status);
   }
 }

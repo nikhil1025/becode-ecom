@@ -27,4 +27,27 @@ export declare class MailService {
         email: string;
         message: string;
     }): Promise<void>;
+    sendReturnStatusUpdate(to: string, details: {
+        returnId: string;
+        orderNumber: string;
+        status: string;
+        rejectionReason?: string;
+        adminNote?: string;
+    }): Promise<void>;
+    sendRefundConfirmation(to: string, details: {
+        returnId: string;
+        orderNumber: string;
+        amount: number;
+        method: string;
+        transactionId: string;
+    }): Promise<void>;
+    sendOrderCancellation(to: string, details: {
+        orderNumber: string;
+        cancelledItems: Array<{
+            name: string;
+            quantity: number;
+            refundAmount: number;
+        }>;
+        totalRefund: number;
+    }): Promise<void>;
 }

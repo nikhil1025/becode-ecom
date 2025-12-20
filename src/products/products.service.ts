@@ -5,14 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { S3Service } from '../storage/s3.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 import { stat } from 'fs';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
-    private s3: S3Service,
+    private fileUploadService: FileUploadService,
   ) {}
 
   async findAll(filters?: {
@@ -42,7 +42,10 @@ export class ProductsService {
         );
       }
 
-      const where: any = { status: 'PUBLISHED' };
+      const where: any = {
+        status: 'PUBLISHED',
+        isDeleted: false, // Exclude deleted products from user view
+      };
 
       if (filters?.category) {
         where.category = { slug: filters.category };
@@ -172,7 +175,10 @@ export class ProductsService {
       }
 
       const product = await this.prisma.product.findUnique({
-        where: { id },
+        where: {
+          id,
+          isDeleted: false, // Exclude deleted products from user view
+        },
         include: {
           images: true,
           category: true,
@@ -330,14 +336,29 @@ export class ProductsService {
 
       const existingProduct = await this.prisma.product.findUnique({
         where: { id },
+        include: {
+          orderItems: true,
+        },
       });
 
       if (!existingProduct) {
         throw new NotFoundException(`Product with ID ${id} not found`);
       }
 
-      return this.prisma.product.delete({
+      // Prevent deletion if product is linked to orders
+      if (existingProduct.orderItems && existingProduct.orderItems.length > 0) {
+        throw new BadRequestException(
+          'Cannot delete product that is linked to existing orders. Use soft delete instead.',
+        );
+      }
+
+      // Soft delete: mark as deleted
+      return this.prisma.product.update({
         where: { id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
       });
     } catch (error) {
       if (
@@ -348,6 +369,45 @@ export class ProductsService {
       }
       throw new InternalServerErrorException(
         'Failed to delete product: ' + error.message,
+      );
+    }
+  }
+
+  async restore(id: string): Promise<any> {
+    try {
+      if (!id) {
+        throw new BadRequestException('Product ID is required');
+      }
+
+      const existingProduct = await this.prisma.product.findUnique({
+        where: { id },
+      });
+
+      if (!existingProduct) {
+        throw new NotFoundException(`Product with ID ${id} not found`);
+      }
+
+      if (!existingProduct.isDeleted) {
+        throw new BadRequestException('Product is not deleted');
+      }
+
+      // Restore product
+      return this.prisma.product.update({
+        where: { id },
+        data: {
+          isDeleted: false,
+          deletedAt: null,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to restore product: ' + error.message,
       );
     }
   }
@@ -372,20 +432,26 @@ export class ProductsService {
         throw new NotFoundException('Product not found');
       }
 
-      const uploadedImages: any[] = [];
-      for (const file of files) {
-        const { url } = await this.s3.uploadProductImage(productId, file);
-        const image = await this.prisma.productImage.create({
-          data: {
-            productId,
-            url,
-            altText: product.name,
-          },
-        });
-        uploadedImages.push(image);
-      }
+      // Define resize options for product images
+      const resizeOptions = { width: 800, height: 800 };
+      const pathPrefix = `products/${productId}`;
 
-      return uploadedImages;
+      const uploadedImagesData =
+        await this.fileUploadService.uploadMultipleImages(
+          files,
+          pathPrefix,
+          resizeOptions,
+        );
+
+      const createdImages = await this.prisma.productImage.createMany({
+        data: uploadedImagesData.map((img) => ({
+          productId,
+          url: img.url,
+          altText: product.name,
+        })),
+      });
+
+      return createdImages;
     } catch (error) {
       if (
         error instanceof BadRequestException ||
@@ -405,12 +471,17 @@ export class ProductsService {
         return [];
       }
 
-      const uploadPromises = files.map((file) =>
-        this.s3.uploadProductImage('temp', file),
-      );
-      const uploadResults = await Promise.all(uploadPromises);
+      const resizeOptions = { width: 800, height: 800 };
+      const pathPrefix = 'products/temp';
 
-      return uploadResults.map((result) => result.url);
+      const uploadedImagesData =
+        await this.fileUploadService.uploadMultipleImages(
+          files,
+          pathPrefix,
+          resizeOptions,
+        );
+
+      return uploadedImagesData.map((result) => result.url);
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to upload product images: ' + error.message,
@@ -565,6 +636,85 @@ export class ProductsService {
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to retrieve admin products: ' + error.message,
+      );
+    }
+  }
+
+  async findDeletedProducts(): Promise<any[]> {
+    try {
+      return this.prisma.product.findMany({
+        where: { isDeleted: true, includeDeleted: true } as any,
+      });
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to retrieve deleted products: ' + error.message,
+      );
+    }
+  }
+
+  async restoreProduct(id: string): Promise<any> {
+    try {
+      if (!id) {
+        throw new BadRequestException('Product ID is required');
+      }
+
+      // First, check if the product exists (even if soft-deleted)
+      const product = await this.prisma.product.findUnique({
+        where: { id, includeDeleted: true } as any,
+      });
+
+      if (!product) {
+        throw new NotFoundException(`Product with ID ${id} not found`);
+      }
+
+      // If it exists, update the isDeleted flag
+      return this.prisma.product.update({
+        where: { id },
+        data: { isDeleted: false },
+      });
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to restore product: ' + error.message,
+      );
+    }
+  }
+
+  async forceDeleteProduct(id: string): Promise<{ message: string }> {
+    try {
+      if (!id) {
+        throw new BadRequestException('Product ID is required');
+      }
+
+      // First, check if the product exists (even if soft-deleted)
+      const product = await this.prisma.product.findUnique({
+        where: { id, includeDeleted: true } as any,
+      });
+
+      if (!product) {
+        throw new NotFoundException(`Product with ID ${id} not found`);
+      }
+
+      // This will now be a hard delete because of the `forceDelete` flag
+      await this.prisma.product.delete({
+        where: { id, forceDelete: true } as any,
+      });
+
+      return { message: `Product ${id} permanently deleted.` };
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to permanently delete product: ' + error.message,
       );
     }
   }

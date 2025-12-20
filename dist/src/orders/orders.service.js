@@ -14,12 +14,15 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const mail_service_1 = require("../mail/mail.service");
 const prisma_service_1 = require("../prisma.service");
+const wallet_service_1 = require("../wallet/wallet.service");
 let OrdersService = class OrdersService {
     prisma;
     mailService;
-    constructor(prisma, mailService) {
+    walletService;
+    constructor(prisma, mailService, walletService) {
         this.prisma = prisma;
         this.mailService = mailService;
+        this.walletService = walletService;
     }
     async createOrder(userId, data) {
         try {
@@ -44,70 +47,101 @@ let OrdersService = class OrdersService {
                 }
             }
             const { items, shippingAddress, billingAddress } = data;
-            const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-            const tax = subtotal * 0.1;
-            const shipping = subtotal > 50 ? 0 : 10;
-            const total = subtotal + tax + shipping;
-            const order = await this.prisma.order.create({
-                data: {
-                    userId,
-                    orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-                    status: client_1.OrderStatus.PENDING,
-                    paymentStatus: client_1.PaymentStatus.PENDING,
-                    subtotal,
-                    tax,
-                    shipping,
-                    total,
-                    shippingAddress: shippingAddress || {},
-                    billingAddress: billingAddress || shippingAddress || {},
-                    items: {
-                        create: items.map((item) => ({
-                            productId: item.productId,
-                            variantId: item.variantId,
-                            quantity: item.quantity,
-                            price: item.price,
-                            productSnapshot: {
-                                name: '',
+            return await this.prisma.$transaction(async (tx) => {
+                const stockUpdates = [];
+                for (const item of items) {
+                    if (item.variantId) {
+                        const variant = await tx.productVariant.findUnique({
+                            where: { id: item.variantId },
+                        });
+                        if (!variant || variant.stockQuantity < item.quantity) {
+                            throw new common_1.BadRequestException(`Not enough stock for variant ${variant?.name || item.variantId}`);
+                        }
+                        stockUpdates.push(tx.productVariant.update({
+                            where: { id: item.variantId },
+                            data: { stockQuantity: { decrement: item.quantity } },
+                        }));
+                    }
+                    else {
+                        const product = await tx.product.findUnique({
+                            where: { id: item.productId },
+                        });
+                        if (!product || product.stockQuantity < item.quantity) {
+                            throw new common_1.BadRequestException(`Not enough stock for product ${product?.name || item.productId}`);
+                        }
+                        stockUpdates.push(tx.product.update({
+                            where: { id: item.productId },
+                            data: { stockQuantity: { decrement: item.quantity } },
+                        }));
+                    }
+                }
+                await Promise.all(stockUpdates);
+                const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                const tax = subtotal * 0.1;
+                const shipping = subtotal > 50 ? 0 : 10;
+                const total = subtotal + tax + shipping;
+                const order = await tx.order.create({
+                    data: {
+                        userId,
+                        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+                        status: client_1.OrderStatus.PENDING,
+                        paymentStatus: client_1.PaymentStatus.PENDING,
+                        subtotal,
+                        tax,
+                        shipping,
+                        total,
+                        shippingAddress: shippingAddress || {},
+                        billingAddress: billingAddress || shippingAddress || {},
+                        items: {
+                            create: items.map((item) => ({
+                                productId: item.productId,
+                                variantId: item.variantId,
+                                quantity: item.quantity,
                                 price: item.price,
-                            },
-                        })),
-                    },
-                },
-                include: {
-                    items: {
-                        include: {
-                            product: {
-                                include: {
-                                    images: true,
+                                status: client_1.OrderItemStatus.PLACED,
+                                productSnapshot: {
+                                    name: '',
+                                    price: item.price,
                                 },
-                            },
-                            variant: true,
+                            })),
                         },
                     },
-                },
+                    include: {
+                        items: {
+                            include: {
+                                product: {
+                                    include: {
+                                        images: true,
+                                    },
+                                },
+                                variant: true,
+                            },
+                        },
+                    },
+                });
+                const cart = await tx.cart.findUnique({ where: { userId } });
+                if (cart) {
+                    await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+                }
+                const user = await tx.user.findUnique({ where: { id: userId } });
+                if (user?.email) {
+                    try {
+                        await this.mailService.sendOrderConfirmation(user.email, {
+                            orderId: order.orderNumber,
+                            totalAmount: total,
+                            items: items.map((item) => ({
+                                name: item.productId,
+                                quantity: item.quantity,
+                                price: item.price,
+                            })),
+                        });
+                    }
+                    catch (error) {
+                        console.error('Failed to send order confirmation email:', error);
+                    }
+                }
+                return order;
             });
-            const cart = await this.prisma.cart.findUnique({ where: { userId } });
-            if (cart) {
-                await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-            }
-            const user = await this.prisma.user.findUnique({ where: { id: userId } });
-            if (user?.email) {
-                try {
-                    await this.mailService.sendOrderConfirmation(user.email, {
-                        orderId: order.orderNumber,
-                        totalAmount: total,
-                        items: items.map((item) => ({
-                            name: item.productId,
-                            quantity: item.quantity,
-                            price: item.price,
-                        })),
-                    });
-                }
-                catch (error) {
-                    console.error('Failed to send order confirmation email:', error);
-                }
-            }
-            return order;
         }
         catch (error) {
             if (error instanceof common_1.BadRequestException) {
@@ -115,6 +149,115 @@ let OrdersService = class OrdersService {
             }
             throw new common_1.InternalServerErrorException('Failed to create order: ' + error.message);
         }
+    }
+    async cancelOrderItems(userId, orderId, cancelItemsDto) {
+        return this.prisma.$transaction(async (tx) => {
+            const order = await tx.order.findUnique({
+                where: { id: orderId },
+                include: { items: true },
+            });
+            if (!order) {
+                throw new common_1.NotFoundException('Order not found.');
+            }
+            if (order.userId !== userId) {
+                throw new common_1.NotFoundException('Order does not belong to the current user.');
+            }
+            const allowedTrackingStatuses = ['ORDER_PLACED', 'CONFIRMED', 'PACKED'];
+            if (!allowedTrackingStatuses.includes(order.trackingStatus)) {
+                throw new common_1.BadRequestException(`Order cannot be cancelled as it is already ${order.trackingStatus}. Cancellation is only allowed before shipment.`);
+            }
+            const cancellableStatuses = [
+                client_1.OrderStatus.PENDING,
+                client_1.OrderStatus.PROCESSING,
+                client_1.OrderStatus.CONFIRMED,
+            ];
+            if (!cancellableStatuses.includes(order.status)) {
+                throw new common_1.BadRequestException(`Order cannot be cancelled in its current status: ${order.status}`);
+            }
+            let totalRefundAmount = 0;
+            const itemsToCancel = cancelItemsDto.items;
+            for (const item of itemsToCancel) {
+                const orderItem = order.items.find((oi) => oi.id === item.orderItemId);
+                if (!orderItem) {
+                    throw new common_1.BadRequestException(`Order item ${item.orderItemId} not found in this order.`);
+                }
+                if (orderItem.status === client_1.OrderItemStatus.CANCELLED) {
+                    throw new common_1.BadRequestException(`Order item ${item.orderItemId} is already cancelled.`);
+                }
+                if (orderItem.status === client_1.OrderItemStatus.RETURNED) {
+                    throw new common_1.BadRequestException(`Order item ${item.orderItemId} is already returned and cannot be cancelled.`);
+                }
+            }
+            for (const item of itemsToCancel) {
+                const orderItem = order.items.find((oi) => oi.id === item.orderItemId);
+                if (orderItem && orderItem.status === client_1.OrderItemStatus.PLACED) {
+                    await tx.orderItem.update({
+                        where: { id: orderItem.id },
+                        data: {
+                            status: client_1.OrderItemStatus.CANCELLED,
+                            cancellationReason: item.reason,
+                            cancelledAt: new Date(),
+                        },
+                    });
+                    if (orderItem.variantId) {
+                        await tx.productVariant.update({
+                            where: { id: orderItem.variantId },
+                            data: { stockQuantity: { increment: orderItem.quantity } },
+                        });
+                    }
+                    else {
+                        await tx.product.update({
+                            where: { id: orderItem.productId },
+                            data: { stockQuantity: { increment: orderItem.quantity } },
+                        });
+                    }
+                    totalRefundAmount += orderItem.price * orderItem.quantity;
+                }
+            }
+            if (totalRefundAmount > 0) {
+                await this.walletService.credit(userId, totalRefundAmount, `Refund for cancelled items in order ${order.orderNumber}`, order.id);
+            }
+            try {
+                const user = await tx.user.findUnique({ where: { id: userId } });
+                if (user) {
+                    const cancelledItems = [];
+                    for (const item of itemsToCancel) {
+                        const orderItem = order.items.find((oi) => oi.id === item.orderItemId);
+                        if (orderItem) {
+                            const productSnapshot = orderItem.productSnapshot;
+                            cancelledItems.push({
+                                name: productSnapshot?.name || 'Unknown Product',
+                                quantity: orderItem.quantity,
+                                refundAmount: orderItem.price * orderItem.quantity,
+                            });
+                        }
+                    }
+                    await this.mailService.sendOrderCancellation(user.email, {
+                        orderNumber: order.orderNumber,
+                        cancelledItems,
+                        totalRefund: totalRefundAmount,
+                    });
+                }
+            }
+            catch (emailError) {
+                console.error('Failed to send cancellation email:', emailError);
+            }
+            const updatedOrderItems = await tx.orderItem.findMany({
+                where: { orderId: order.id },
+            });
+            const allItemsCancelled = updatedOrderItems.every((item) => item.status === client_1.OrderItemStatus.CANCELLED);
+            if (allItemsCancelled) {
+                return tx.order.update({
+                    where: { id: order.id },
+                    data: { status: client_1.OrderStatus.CANCELLED },
+                    include: { items: true },
+                });
+            }
+            return tx.order.findUnique({
+                where: { id: order.id },
+                include: { items: true },
+            });
+        });
     }
     async getUserOrders(userId) {
         try {
@@ -270,40 +413,6 @@ let OrdersService = class OrdersService {
             throw new common_1.InternalServerErrorException('Failed to update payment status: ' + error.message);
         }
     }
-    async cancelOrder(userId, orderId) {
-        try {
-            if (!userId) {
-                throw new common_1.BadRequestException('User ID is required');
-            }
-            if (!orderId) {
-                throw new common_1.BadRequestException('Order ID is required');
-            }
-            const order = await this.prisma.order.findFirst({
-                where: {
-                    id: orderId,
-                    userId,
-                },
-            });
-            if (!order) {
-                throw new common_1.NotFoundException('Order not found');
-            }
-            if (order.status !== client_1.OrderStatus.PENDING &&
-                order.status !== client_1.OrderStatus.PROCESSING) {
-                throw new common_1.BadRequestException('Cannot cancel order in current status');
-            }
-            return this.prisma.order.update({
-                where: { id: orderId },
-                data: { status: client_1.OrderStatus.CANCELLED },
-            });
-        }
-        catch (error) {
-            if (error instanceof common_1.BadRequestException ||
-                error instanceof common_1.NotFoundException) {
-                throw error;
-            }
-            throw new common_1.InternalServerErrorException('Failed to cancel order: ' + error.message);
-        }
-    }
     async getAllOrders(page = 1, limit = 20) {
         try {
             if (page < 1) {
@@ -353,6 +462,96 @@ let OrdersService = class OrdersService {
                 throw error;
             }
             throw new common_1.InternalServerErrorException('Failed to retrieve orders: ' + error.message);
+        }
+    }
+    async getCancelledOrders(page = 1, limit = 20) {
+        try {
+            if (page < 1) {
+                throw new common_1.BadRequestException('Page must be at least 1');
+            }
+            if (limit < 1 || limit > 100) {
+                throw new common_1.BadRequestException('Limit must be between 1 and 100');
+            }
+            const skip = (page - 1) * limit;
+            const [orders, total] = await Promise.all([
+                this.prisma.order.findMany({
+                    where: {
+                        OR: [
+                            { status: client_1.OrderStatus.CANCELLED },
+                            {
+                                items: {
+                                    some: {
+                                        status: client_1.OrderItemStatus.CANCELLED,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    skip,
+                    take: limit,
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                firstName: true,
+                                lastName: true,
+                            },
+                        },
+                        items: {
+                            include: {
+                                product: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        images: {
+                                            where: { isFeatured: true },
+                                            take: 1,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    orderBy: {
+                        updatedAt: 'desc',
+                    },
+                }),
+                this.prisma.order.count({
+                    where: {
+                        OR: [
+                            { status: client_1.OrderStatus.CANCELLED },
+                            {
+                                items: {
+                                    some: {
+                                        status: client_1.OrderItemStatus.CANCELLED,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                }),
+            ]);
+            const transformedOrders = orders.map((order) => ({
+                ...order,
+                cancelledItems: order.items.filter((item) => item.status === client_1.OrderItemStatus.CANCELLED),
+                hasCancelledItems: order.items.some((item) => item.status === client_1.OrderItemStatus.CANCELLED),
+            }));
+            return {
+                orders: transformedOrders,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    totalPages: Math.ceil(total / limit),
+                },
+            };
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException) {
+                throw error;
+            }
+            throw new common_1.InternalServerErrorException('Failed to retrieve cancelled orders: ' + error.message);
         }
     }
     async getAdminOrderById(orderId) {
@@ -491,81 +690,12 @@ let OrdersService = class OrdersService {
             throw new common_1.InternalServerErrorException('Failed to get order tracking: ' + error.message);
         }
     }
-    async requestReturn(userId, orderId, reason, items) {
-        try {
-            if (!userId || !orderId || !reason) {
-                throw new common_1.BadRequestException('User ID, Order ID, and reason are required');
-            }
-            const order = await this.prisma.order.findFirst({
-                where: { id: orderId, userId },
-            });
-            if (!order) {
-                throw new common_1.NotFoundException('Order not found');
-            }
-            if (order.status !== client_1.OrderStatus.DELIVERED) {
-                throw new common_1.BadRequestException('Can only request return for delivered orders');
-            }
-            const returnRequest = {
-                id: `RET-${Date.now()}`,
-                orderId: order.id,
-                orderNumber: order.orderNumber,
-                userId,
-                reason,
-                items: items || [],
-                status: 'PENDING',
-                createdAt: new Date(),
-            };
-            return returnRequest;
-        }
-        catch (error) {
-            if (error instanceof common_1.BadRequestException ||
-                error instanceof common_1.NotFoundException) {
-                throw error;
-            }
-            throw new common_1.InternalServerErrorException('Failed to request return: ' + error.message);
-        }
-    }
-    async getAllReturns(page = 1, limit = 20) {
-        try {
-            await Promise.resolve();
-            return {
-                returns: [],
-                pagination: {
-                    page,
-                    limit,
-                    total: 0,
-                    totalPages: 0,
-                },
-            };
-        }
-        catch (error) {
-            throw new common_1.InternalServerErrorException('Failed to retrieve returns: ' + error.message);
-        }
-    }
-    async updateReturnStatus(returnId, status) {
-        try {
-            if (!returnId || !status) {
-                throw new common_1.BadRequestException('Return ID and status are required');
-            }
-            await Promise.resolve();
-            return {
-                id: returnId,
-                status,
-                updatedAt: new Date(),
-            };
-        }
-        catch (error) {
-            if (error instanceof common_1.BadRequestException) {
-                throw error;
-            }
-            throw new common_1.InternalServerErrorException('Failed to update return status: ' + error.message);
-        }
-    }
 };
 exports.OrdersService = OrdersService;
 exports.OrdersService = OrdersService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        mail_service_1.MailService])
+        mail_service_1.MailService,
+        wallet_service_1.WalletService])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

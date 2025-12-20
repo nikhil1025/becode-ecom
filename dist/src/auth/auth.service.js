@@ -65,20 +65,28 @@ let AuthService = class AuthService {
             if (password.length < 6) {
                 throw new common_1.BadRequestException('Password must be at least 6 characters long');
             }
-            const existingUser = await this.prisma.user.findUnique({
-                where: { email },
-            });
-            if (existingUser) {
-                throw new common_1.ConflictException('User with this email already exists');
-            }
-            const hashedPassword = await bcrypt.hash(password, 10);
-            const user = await this.prisma.user.create({
-                data: {
-                    email,
-                    password: hashedPassword,
-                    firstName,
-                    lastName,
-                },
+            const user = await this.prisma.$transaction(async (tx) => {
+                const existingUser = await tx.user.findUnique({
+                    where: { email },
+                });
+                if (existingUser) {
+                    throw new common_1.ConflictException('User with this email already exists');
+                }
+                const hashedPassword = await bcrypt.hash(password, 10);
+                const newUser = await tx.user.create({
+                    data: {
+                        email,
+                        password: hashedPassword,
+                        firstName,
+                        lastName,
+                    },
+                });
+                await tx.wallet.create({
+                    data: {
+                        userId: newUser.id,
+                    },
+                });
+                return newUser;
             });
             const token = this.jwtService.sign({
                 userId: user.id,

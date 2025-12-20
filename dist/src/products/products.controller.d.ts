@@ -10,5 +10,10 @@ export declare class ProductsController {
     create(data: CreateProductDto, images?: Express.Multer.File[]): Promise<any>;
     update(id: string, data: UpdateProductDto, images?: Express.Multer.File[]): Promise<any>;
     delete(id: string): Promise<any>;
+    findDeleted(): Promise<any[]>;
+    restore(id: string): Promise<any>;
+    forceDelete(id: string): Promise<{
+        message: string;
+    }>;
     uploadImages(id: string, files: Express.Multer.File[]): Promise<any>;
 }

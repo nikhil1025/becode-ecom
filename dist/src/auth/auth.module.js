@@ -13,6 +13,7 @@ const jwt_1 = require("@nestjs/jwt");
 const passport_1 = require("@nestjs/passport");
 const prisma_service_1 = require("../prisma.service");
 const s3_service_1 = require("../storage/s3.service");
+const wallet_module_1 = require("../wallet/wallet.module");
 const admin_auth_controller_1 = require("./admin-auth.controller");
 const admin_jwt_strategy_1 = require("./admin-jwt.strategy");
 const auth_controller_1 = require("./auth.controller");
@@ -38,6 +39,7 @@ exports.AuthModule = AuthModule = __decorate([
                 },
                 inject: [config_1.ConfigService],
             }),
+            wallet_module_1.WalletModule,
         ],
         providers: [
             auth_service_1.AuthService,

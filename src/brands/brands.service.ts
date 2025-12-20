@@ -6,13 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { S3Service } from '../storage/s3.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 @Injectable()
 export class BrandsService {
   constructor(
     private prisma: PrismaService,
-    private s3: S3Service,
+    private fileUploadService: FileUploadService,
   ) {}
 
   async findAll(): Promise<any[]> {
@@ -193,17 +193,13 @@ export class BrandsService {
 
   async uploadLogo(file: Express.Multer.File): Promise<string> {
     try {
-      console.log('Uploading logo:', {
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size,
-        buffer: file.buffer ? 'present' : 'missing',
-      });
-      const { url } = await this.s3.uploadProductImage('brands', file);
-      console.log('Logo uploaded successfully:', url);
+      const { url } = await this.fileUploadService.uploadImage(
+        file,
+        'brands',
+        { width: 300, height: 300 },
+      );
       return url;
     } catch (error) {
-      console.error('Logo upload error:', error);
       throw new InternalServerErrorException(
         'Failed to upload brand logo: ' + error.message,
       );

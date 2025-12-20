@@ -19,6 +19,7 @@ const client_1 = require("@prisma/client");
 const admin_jwt_auth_guard_1 = require("../auth/admin-jwt-auth.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const roles_guard_1 = require("../auth/roles.guard");
+const file_filters_1 = require("../common/utils/file-filters");
 const product_dto_1 = require("./dto/product.dto");
 const products_service_1 = require("./products.service");
 let ProductsController = class ProductsController {
@@ -69,6 +70,15 @@ let ProductsController = class ProductsController {
     async delete(id) {
         return this.productsService.delete(id);
     }
+    async findDeleted() {
+        return this.productsService.findDeletedProducts();
+    }
+    async restore(id) {
+        return this.productsService.restore(id);
+    }
+    async forceDelete(id) {
+        return this.productsService.forceDeleteProduct(id);
+    }
     async uploadImages(id, files) {
         return this.productsService.uploadImages(id, files);
     }
@@ -117,7 +127,7 @@ __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10)),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10, { fileFilter: file_filters_1.imageFileFilter })),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.UploadedFiles)()),
     __metadata("design:type", Function),
@@ -128,7 +138,7 @@ __decorate([
     (0, common_1.Put)(':id'),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10)),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10, { fileFilter: file_filters_1.imageFileFilter })),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.UploadedFiles)()),
@@ -146,10 +156,36 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "delete", null);
 __decorate([
+    (0, common_1.Get)('admin/deleted'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "findDeleted", null);
+__decorate([
+    (0, common_1.Put)(':id/restore'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "restore", null);
+__decorate([
+    (0, common_1.Delete)(':id/force'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "forceDelete", null);
+__decorate([
     (0, common_1.Post)(':id/images'),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10)),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10, { fileFilter: file_filters_1.imageFileFilter })),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.UploadedFiles)()),
     __metadata("design:type", Function),

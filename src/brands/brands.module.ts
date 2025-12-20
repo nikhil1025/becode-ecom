@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
+import { CommonModule } from '../common/common.module';
 import { PrismaService } from '../prisma.service';
-import { S3Service } from '../storage/s3.service';
 import { BrandsController } from './brands.controller';
 import { BrandsService } from './brands.service';
 
 @Module({
+  imports: [CommonModule],
   controllers: [BrandsController],
-  providers: [BrandsService, PrismaService, S3Service],
+  providers: [BrandsService, PrismaService],
 })
 export class BrandsModule {}

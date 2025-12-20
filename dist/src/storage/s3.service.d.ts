@@ -2,11 +2,11 @@ export declare class S3Service {
     private client;
     private bucket;
     constructor();
-    uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
+    upload(buffer: Buffer, pathPrefix: string, extension: string, mimetype: string): Promise<{
         url: string;
         key: string;
     }>;
-    uploadProductImage(productId: string, file: Express.Multer.File): Promise<{
+    uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
         url: string;
         key: string;
     }>;

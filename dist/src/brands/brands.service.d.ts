@@ -1,9 +1,9 @@
 import { PrismaService } from '../prisma.service';
-import { S3Service } from '../storage/s3.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 export declare class BrandsService {
     private prisma;
-    private s3;
-    constructor(prisma: PrismaService, s3: S3Service);
+    private fileUploadService;
+    constructor(prisma: PrismaService, fileUploadService: FileUploadService);
     findAll(): Promise<any[]>;
     findOne(id: string): Promise<any>;
     create(data: {

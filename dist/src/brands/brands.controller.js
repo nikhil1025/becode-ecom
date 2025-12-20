@@ -19,6 +19,7 @@ const client_1 = require("@prisma/client");
 const admin_jwt_auth_guard_1 = require("../auth/admin-jwt-auth.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const roles_guard_1 = require("../auth/roles.guard");
+const file_filters_1 = require("../common/utils/file-filters");
 const brands_service_1 = require("./brands.service");
 let BrandsController = class BrandsController {
     brandsService;
@@ -68,7 +69,7 @@ __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('logo')),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('logo', { fileFilter: file_filters_1.imageFileFilter })),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
@@ -79,7 +80,7 @@ __decorate([
     (0, common_1.Put)(':id'),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('logo')),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('logo', { fileFilter: file_filters_1.imageFileFilter })),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.UploadedFile)()),

@@ -32,6 +32,12 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum OrderItemStatus {
+  PLACED
+  CANCELLED
+  RETURNED
+}
+
 enum ProductStatus {
   DRAFT
   PUBLISHED
@@ -65,6 +71,8 @@ model User {
   cart          Cart?
   wishlistItems WishlistItem[]
   returns       Return[]
+  wallet        Wallet?
+  refunds       Refund[]
 
   @@map("users")
 }
@@ -126,6 +134,8 @@ model Product {
   reviewCount       Int           @default(0)
   metaTitle         String?
   metaDescription   String?
+  isDeleted         Boolean       @default(false)
+  deletedAt         DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
@@ -139,6 +149,7 @@ model Product {
   featuredProducts FeaturedProduct[]
   popularProducts  PopularProduct[]
 
+  @@index([isDeleted])
   @@map("products")
 }
 
@@ -217,18 +228,21 @@ model DeliveryAgent {
 }
 
 model OrderItem {
-  id              String          @id @default(uuid())
-  orderId         String
-  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId       String
-  product         Product         @relation(fields: [productId], references: [id])
-  variantId       String?
-  variant         ProductVariant? @relation(fields: [variantId], references: [id])
-  quantity        Int
-  price           Float
-  productSnapshot Json // Store product details at time of order
-  returnItems     ReturnItem[]
-  createdAt       DateTime        @default(now())
+  id                 String          @id @default(uuid())
+  orderId            String
+  order              Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId          String
+  product            Product         @relation(fields: [productId], references: [id])
+  variantId          String?
+  variant            ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity           Int
+  price              Float
+  productSnapshot    Json // Store product details at time of order
+  status             OrderItemStatus @default(PLACED)
+  cancellationReason String?
+  cancelledAt        DateTime?
+  returnItems        ReturnItem[]
+  createdAt          DateTime        @default(now())
 
   @@map("order_items")
 }
@@ -332,9 +346,15 @@ enum ReturnType {
 }
 
 enum ReturnStatus {
+  REQUESTED
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  EXCHANGE_APPROVED
+  HOLD_FOR_INSPECTION
+  REFUNDED
   PENDING
   APPROVED
-  REJECTED
   PROCESSING
   COMPLETED
   CANCELLED
@@ -368,19 +388,23 @@ model SiteContent {
 }
 
 model Return {
-  id        String       @id @default(uuid())
-  orderId   String
-  order     Order        @relation(fields: [orderId], references: [id])
-  userId    String
-  user      User         @relation(fields: [userId], references: [id])
-  type      ReturnType
-  status    ReturnStatus @default(PENDING)
-  reason    String
-  comments  String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id              String       @id @default(uuid())
+  orderId         String
+  order           Order        @relation(fields: [orderId], references: [id])
+  userId          String
+  user            User         @relation(fields: [userId], references: [id])
+  type            ReturnType
+  status          ReturnStatus @default(REQUESTED)
+  reason          String
+  comments        String?
+  images          Json? // To store an array of image URLs
+  rejectionReason String?
+  statusHistory   Json? // Track status change history
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
-  items ReturnItem[]
+  items  ReturnItem[]
+  refund Refund?
 
   @@map("returns")
 }
@@ -533,4 +557,62 @@ model AuditLog {
   @@index([entityType])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum RefundMethod {
+  BANK
+  WALLET
+  ORIGINAL
+}
+
+model Refund {
+  id            String       @id @default(uuid())
+  returnId      String?      @unique
+  return        Return?      @relation(fields: [returnId], references: [id])
+  orderId       String
+  orderItemId   String
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  amount        Float
+  method        RefundMethod @default(WALLET)
+  transactionId String
+  refundDate    DateTime     @default(now())
+  adminRemarks  String?
+  notes         String?
+  processedBy   String // Admin user ID
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("refunds")
+}
+
+model Wallet {
+  id           String              @id @default(uuid())
+  userId       String              @unique
+  user         User                @relation(fields: [userId], references: [id])
+  balance      Float               @default(0.0)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  transactions WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id          String          @id @default(uuid())
+  walletId    String
+  wallet      Wallet          @relation(fields: [walletId], references: [id])
+  amount      Float
+  type        TransactionType
+  description String
+  relatedId   String? // Could be orderId, returnId, etc.
+  createdAt   DateTime        @default(now())
+
+  @@index([walletId])
+  @@map("wallet_transactions")
 }

@@ -3,11 +3,7 @@ export declare class LocalStorageService {
     private baseUrl;
     constructor();
     private ensureUploadDir;
-    uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
-        url: string;
-        key: string;
-    }>;
-    uploadProductImage(productId: string, file: Express.Multer.File): Promise<{
+    upload(buffer: Buffer, pathPrefix: string, extension?: string): Promise<{
         url: string;
         key: string;
     }>;

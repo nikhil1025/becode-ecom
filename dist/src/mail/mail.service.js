@@ -237,6 +237,148 @@ let MailService = class MailService {
             html,
         });
     }
+    async sendReturnStatusUpdate(to, details) {
+        const statusColors = {
+            REQUESTED: '#2196F3',
+            UNDER_REVIEW: '#FF9800',
+            ACCEPTED: '#4CAF50',
+            REJECTED: '#f44336',
+            REFUNDED: '#4CAF50',
+        };
+        const color = statusColors[details.status] || '#666';
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Return Status Update</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: ${color};">Return Request Status Update</h1>
+            <p><strong>Order Number:</strong> ${details.orderNumber}</p>
+            <p><strong>Return ID:</strong> ${details.returnId}</p>
+            
+            <div style="background-color: #f5f5f5; padding: 15px; margin: 20px 0; border-left: 4px solid ${color};">
+              <p style="font-size: 18px; margin: 0;"><strong>Status: ${details.status}</strong></p>
+            </div>
+            
+            ${details.rejectionReason ? `<p><strong>Reason:</strong> ${details.rejectionReason}</p>` : ''}
+            ${details.adminNote ? `<p><strong>Note:</strong> ${details.adminNote}</p>` : ''}
+            
+            <p style="margin-top: 30px; color: #666;">
+              ${details.status === 'ACCEPTED' ? 'Your refund will be processed shortly.' : ''}
+              ${details.status === 'REJECTED' ? 'If you have questions, please contact our support team.' : ''}
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+        await this.transporter.sendMail({
+            from: process.env.MAIL_FROM || 'noreply@ecommerce.com',
+            to,
+            subject: `Return Request ${details.status} - Order ${details.orderNumber}`,
+            html,
+        });
+    }
+    async sendRefundConfirmation(to, details) {
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Refund Confirmation</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #4CAF50;">Refund Processed Successfully ✓</h1>
+            <p>Your refund has been processed.</p>
+            
+            <div style="background-color: #f5f5f5; padding: 15px; margin: 20px 0;">
+              <p><strong>Order Number:</strong> ${details.orderNumber}</p>
+              <p><strong>Return ID:</strong> ${details.returnId}</p>
+              <p><strong>Refund Amount:</strong> $${details.amount.toFixed(2)}</p>
+              <p><strong>Method:</strong> ${details.method}</p>
+              <p><strong>Transaction ID:</strong> ${details.transactionId}</p>
+            </div>
+            
+            <p style="margin-top: 20px;">
+              ${details.method === 'WALLET' ? 'The amount has been credited to your wallet and is available for use immediately.' : ''}
+              ${details.method === 'BANK' || details.method === 'ORIGINAL' ? 'The refund will appear in your account within 5-7 business days.' : ''}
+            </p>
+            
+            <p style="margin-top: 30px; color: #666;">
+              Thank you for shopping with us!
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+        await this.transporter.sendMail({
+            from: process.env.MAIL_FROM || 'noreply@ecommerce.com',
+            to,
+            subject: `Refund Processed - Order ${details.orderNumber}`,
+            html,
+        });
+    }
+    async sendOrderCancellation(to, details) {
+        const itemsHtml = details.cancelledItems
+            .map((item) => `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.quantity}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">$${item.refundAmount.toFixed(2)}</td>
+        </tr>
+      `)
+            .join('');
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Order Cancellation</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #FF9800;">Order Cancellation Confirmed</h1>
+            <p><strong>Order Number:</strong> ${details.orderNumber}</p>
+            
+            <h2>Cancelled Items:</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #f5f5f5;">
+                  <th style="padding: 10px; text-align: left;">Product</th>
+                  <th style="padding: 10px; text-align: left;">Quantity</th>
+                  <th style="padding: 10px; text-align: left;">Refund</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+            
+            <p style="margin-top: 20px; font-size: 18px;">
+              <strong>Total Refund: $${details.totalRefund.toFixed(2)}</strong>
+            </p>
+            
+            <p style="margin-top: 20px;">
+              The refund amount has been credited to your wallet and is available for immediate use.
+            </p>
+            
+            <p style="margin-top: 30px; color: #666;">
+              If you have any questions, please contact our support team.
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+        await this.transporter.sendMail({
+            from: process.env.MAIL_FROM || 'noreply@ecommerce.com',
+            to,
+            subject: `Order Cancellation Confirmed - ${details.orderNumber}`,
+            html,
+        });
+    }
 };
 exports.MailService = MailService;
 exports.MailService = MailService = __decorate([

@@ -1,10 +1,13 @@
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma.service';
+import { WalletService } from '../wallet/wallet.service';
+import { CancelItemsDto } from './dto';
 export declare class OrdersService {
     private prisma;
     private mailService;
-    constructor(prisma: PrismaService, mailService: MailService);
+    private walletService;
+    constructor(prisma: PrismaService, mailService: MailService, walletService: WalletService);
     createOrder(userId: string, data: {
         items: Array<{
             productId: string;
@@ -51,6 +54,8 @@ export declare class OrdersService {
                 reviewCount: number;
                 metaTitle: string | null;
                 metaDescription: string | null;
+                isDeleted: boolean;
+                deletedAt: Date | null;
             };
             variant: {
                 name: string;
@@ -67,12 +72,15 @@ export declare class OrdersService {
         } & {
             id: string;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.OrderItemStatus;
             productId: string;
             variantId: string | null;
             quantity: number;
             price: number;
             orderId: string;
             productSnapshot: import("@prisma/client/runtime/client").JsonValue;
+            cancellationReason: string | null;
+            cancelledAt: Date | null;
         })[];
     } & {
         id: string;
@@ -94,21 +102,52 @@ export declare class OrdersService {
         trackingStatus: import("@prisma/client").$Enums.TrackingStatus;
         deliveryAgentId: string | null;
     }>;
+    cancelOrderItems(userId: string, orderId: string, cancelItemsDto: CancelItemsDto): Promise<({
+        items: {
+            id: string;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.OrderItemStatus;
+            productId: string;
+            variantId: string | null;
+            quantity: number;
+            price: number;
+            orderId: string;
+            productSnapshot: import("@prisma/client/runtime/client").JsonValue;
+            cancellationReason: string | null;
+            cancelledAt: Date | null;
+        }[];
+    } & {
+        id: string;
+        userId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.OrderStatus;
+        subtotal: number;
+        tax: number;
+        shipping: number;
+        total: number;
+        orderNumber: string;
+        paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+        discount: number;
+        shippingAddress: import("@prisma/client/runtime/client").JsonValue;
+        billingAddress: import("@prisma/client/runtime/client").JsonValue;
+        paymentMethod: string | null;
+        notes: string | null;
+        trackingStatus: import("@prisma/client").$Enums.TrackingStatus;
+        deliveryAgentId: string | null;
+    }) | null>;
     getUserOrders(userId: string): Promise<any[]>;
     getOrderById(userId: string, orderId: string): Promise<any>;
     updateOrderStatus(orderId: string, status: OrderStatus): Promise<any>;
     updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus): Promise<any>;
-    cancelOrder(userId: string, orderId: string): Promise<any>;
     getAllOrders(page?: number, limit?: number): Promise<{
+        orders: any[];
+        pagination: any;
+    }>;
+    getCancelledOrders(page?: number, limit?: number): Promise<{
         orders: any[];
         pagination: any;
     }>;
     getAdminOrderById(orderId: string): Promise<any>;
     getOrderTracking(userId: string, orderId: string): Promise<any>;
-    requestReturn(userId: string, orderId: string, reason: string, items?: string[]): Promise<any>;
-    getAllReturns(page?: number, limit?: number): Promise<{
-        returns: any[];
-        pagination: any;
-    }>;
-    updateReturnStatus(returnId: string, status: string): Promise<any>;
 }

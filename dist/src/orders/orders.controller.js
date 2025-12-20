@@ -19,6 +19,7 @@ const admin_jwt_auth_guard_1 = require("../auth/admin-jwt-auth.guard");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const roles_guard_1 = require("../auth/roles.guard");
+const dto_1 = require("./dto");
 const orders_service_1 = require("./orders.service");
 let OrdersController = class OrdersController {
     ordersService;
@@ -35,11 +36,17 @@ let OrdersController = class OrdersController {
         console.log('process.env.JWT_SECRET', process.env.JWT_SECRET);
         return this.ordersService.getAllOrders(Number(page), Number(limit));
     }
+    async getCancelledOrders(page = '1', limit = '20') {
+        return this.ordersService.getCancelledOrders(Number(page), Number(limit));
+    }
     async getAdminOrderById(orderId) {
         return this.ordersService.getAdminOrderById(orderId);
     }
     async getOrderById(req, orderId) {
         return this.ordersService.getOrderById(req.user.userId, orderId);
+    }
+    async cancelOrderItems(req, orderId, cancelItemsDto) {
+        return this.ordersService.cancelOrderItems(req.user.userId, orderId, cancelItemsDto);
     }
     async updateOrderStatus(orderId, body) {
         return this.ordersService.updateOrderStatus(orderId, body.status);
@@ -50,20 +57,8 @@ let OrdersController = class OrdersController {
     async adminUpdatePaymentStatus(orderId, body) {
         return this.ordersService.updatePaymentStatus(orderId, body.paymentStatus);
     }
-    async cancelOrder(req, orderId) {
-        return this.ordersService.cancelOrder(req.user.userId, orderId);
-    }
     async getOrderTracking(req, orderId) {
         return this.ordersService.getOrderTracking(req.user.userId, orderId);
-    }
-    async requestReturn(req, orderId, body) {
-        return this.ordersService.requestReturn(req.user.userId, orderId, body.reason, body.items);
-    }
-    async getAllReturns(page = '1', limit = '20') {
-        return this.ordersService.getAllReturns(Number(page), Number(limit));
-    }
-    async updateReturnStatus(returnId, body) {
-        return this.ordersService.updateReturnStatus(returnId, body.status);
     }
 };
 exports.OrdersController = OrdersController;
@@ -95,6 +90,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "getAllOrders", null);
 __decorate([
+    (0, common_1.Get)('admin/cancelled'),
+    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "getCancelledOrders", null);
+__decorate([
     (0, common_1.Get)('admin/:orderId'),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
@@ -112,6 +117,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "getOrderById", null);
+__decorate([
+    (0, common_1.Post)(':orderId/cancel-items'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('orderId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, dto_1.CancelItemsDto]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "cancelOrderItems", null);
 __decorate([
     (0, common_1.Put)(':orderId/status'),
     (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
@@ -143,15 +158,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "adminUpdatePaymentStatus", null);
 __decorate([
-    (0, common_1.Put)(':orderId/cancel'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('orderId')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
-    __metadata("design:returntype", Promise)
-], OrdersController.prototype, "cancelOrder", null);
-__decorate([
     (0, common_1.Get)(':orderId/tracking'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Request)()),
@@ -160,36 +166,6 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "getOrderTracking", null);
-__decorate([
-    (0, common_1.Post)(':orderId/return'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('orderId')),
-    __param(2, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, Object]),
-    __metadata("design:returntype", Promise)
-], OrdersController.prototype, "requestReturn", null);
-__decorate([
-    (0, common_1.Get)('admin/returns'),
-    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
-    __param(0, (0, common_1.Query)('page')),
-    __param(1, (0, common_1.Query)('limit')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
-    __metadata("design:returntype", Promise)
-], OrdersController.prototype, "getAllReturns", null);
-__decorate([
-    (0, common_1.Put)('admin/returns/:returnId/status'),
-    (0, common_1.UseGuards)(admin_jwt_auth_guard_1.AdminJwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(client_1.$Enums.UserRole.ADMIN, client_1.$Enums.UserRole.SUPERADMIN),
-    __param(0, (0, common_1.Param)('returnId')),
-    __param(1, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
-    __metadata("design:returntype", Promise)
-], OrdersController.prototype, "updateReturnStatus", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, common_1.Controller)('orders'),
     __metadata("design:paramtypes", [orders_service_1.OrdersService])

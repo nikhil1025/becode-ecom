@@ -18,58 +18,29 @@ export class S3Service {
     this.bucket = process.env.AWS_S3_BUCKET || '';
   }
 
-  async uploadAvatar(
-    userId: string,
-    file: Express.Multer.File,
+  /**
+   * Uploads a file to a specified path prefix in the S3 bucket.
+   * @param buffer The file buffer to save.
+   * @param pathPrefix The subdirectory within the bucket (e.g., 'products', 'avatars').
+   * @param extension The file extension (e.g., 'webp').
+   * @param mimetype The MIME type of the file.
+   * @returns The public URL and key of the uploaded file.
+   */
+  async upload(
+    buffer: Buffer,
+    pathPrefix: string,
+    extension: string,
+    mimetype: string,
   ): Promise<{ url: string; key: string }> {
     try {
-      const ext = (file.originalname.split('.').pop() || 'png').toLowerCase();
-      const key = `avatars/${userId}/${randomUUID()}.${ext}`;
+      const key = `${pathPrefix}/${randomUUID()}.${extension}`;
 
       await this.client.send(
         new PutObjectCommand({
           Bucket: this.bucket,
           Key: key,
-          Body: file.buffer,
-          ContentType: file.mimetype || 'image/png',
-        }) as any,
-      );
-
-      const baseUrl = process.env.AWS_S3_PUBLIC_BASE_URL;
-      const url = baseUrl
-        ? `${baseUrl}/${key}`
-        : `https://${this.bucket}.s3.${process.env.AWS_S3_REGION || 'us-east-1'}.amazonaws.com/${key}`;
-
-      return { url, key };
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to upload avatar');
-    }
-  }
-
-  async uploadProductImage(
-    productId: string,
-    file: Express.Multer.File,
-  ): Promise<{ url: string; key: string }> {
-    try {
-      console.log('S3 Upload attempt:', {
-        bucket: this.bucket,
-        region: process.env.AWS_S3_REGION,
-        productId,
-        fileSize: file.size,
-        hasCredentials: !!(
-          process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-        ),
-      });
-
-      const ext = (file.originalname.split('.').pop() || 'png').toLowerCase();
-      const key = `products/${productId}/${randomUUID()}.${ext}`;
-
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-          Body: file.buffer,
-          ContentType: file.mimetype || 'image/png',
+          Body: buffer,
+          ContentType: mimetype,
         }) as any,
       );
 
@@ -87,8 +58,21 @@ export class S3Service {
         requestId: error.$metadata?.requestId,
       });
       throw new InternalServerErrorException(
-        'Failed to upload product image: ' + error.message,
+        `Failed to upload file to S3: ${error.message}`,
       );
     }
+  }
+
+  /**
+   * Uploads an avatar image to S3.
+   * @param userId The user ID for organizing avatars.
+   * @param file The uploaded file from multer.
+   * @returns The public URL and key of the uploaded avatar.
+   */
+  async uploadAvatar(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<{ url: string; key: string }> {
+    return this.upload(file.buffer, `avatars/${userId}`, 'jpg', file.mimetype);
   }
 }

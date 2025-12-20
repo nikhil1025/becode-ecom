@@ -11,8 +11,8 @@ export declare class FeaturedCategoriesService {
             _count: {
                 products: number;
             };
-            slug: string;
             description: string | null;
+            slug: string;
             image: string | null;
         };
     } & {
@@ -30,8 +30,8 @@ export declare class FeaturedCategoriesService {
             _count: {
                 products: number;
             };
-            slug: string;
             description: string | null;
+            slug: string;
             image: string | null;
         };
     } & {
@@ -49,8 +49,8 @@ export declare class FeaturedCategoriesService {
             _count: {
                 products: number;
             };
-            slug: string;
             description: string | null;
+            slug: string;
             image: string | null;
         };
     } & {
@@ -68,8 +68,8 @@ export declare class FeaturedCategoriesService {
             _count: {
                 products: number;
             };
-            slug: string;
             description: string | null;
+            slug: string;
             image: string | null;
         };
     } & {

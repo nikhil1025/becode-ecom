@@ -1,9 +1,9 @@
 import { PrismaService } from '../prisma.service';
-import { S3Service } from '../storage/s3.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 export declare class ProductsService {
     private prisma;
-    private s3;
-    constructor(prisma: PrismaService, s3: S3Service);
+    private fileUploadService;
+    constructor(prisma: PrismaService, fileUploadService: FileUploadService);
     findAll(filters?: {
         category?: string;
         minPrice?: number;
@@ -17,6 +17,7 @@ export declare class ProductsService {
     create(data: any): Promise<any>;
     update(id: string, data: any): Promise<any>;
     delete(id: string): Promise<any>;
+    restore(id: string): Promise<any>;
     uploadImages(productId: string, files: Express.Multer.File[]): Promise<any>;
     uploadProductImages(files: Express.Multer.File[]): Promise<string[]>;
     findBySlug(slug: string): Promise<any>;
@@ -26,4 +27,9 @@ export declare class ProductsService {
         search?: string;
         status?: string;
     }): Promise<any>;
+    findDeletedProducts(): Promise<any[]>;
+    restoreProduct(id: string): Promise<any>;
+    forceDeleteProduct(id: string): Promise<{
+        message: string;
+    }>;
 }

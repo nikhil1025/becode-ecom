@@ -6,13 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { S3Service } from '../storage/s3.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     private prisma: PrismaService,
-    private s3: S3Service,
+    private fileUploadService: FileUploadService,
   ) {}
 
   async findAll(): Promise<any[]> {
@@ -253,7 +253,11 @@ export class CategoriesService {
 
   async uploadImage(file: Express.Multer.File): Promise<string> {
     try {
-      const { url } = await this.s3.uploadProductImage('categories', file);
+      const { url } = await this.fileUploadService.uploadImage(
+        file,
+        'categories',
+        { width: 500, height: 500 },
+      );
       return url;
     } catch (error) {
       throw new InternalServerErrorException(

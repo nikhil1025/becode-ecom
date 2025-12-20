@@ -26,42 +26,14 @@ let S3Service = class S3Service {
         });
         this.bucket = process.env.AWS_S3_BUCKET || '';
     }
-    async uploadAvatar(userId, file) {
+    async upload(buffer, pathPrefix, extension, mimetype) {
         try {
-            const ext = (file.originalname.split('.').pop() || 'png').toLowerCase();
-            const key = `avatars/${userId}/${(0, crypto_1.randomUUID)()}.${ext}`;
+            const key = `${pathPrefix}/${(0, crypto_1.randomUUID)()}.${extension}`;
             await this.client.send(new client_s3_1.PutObjectCommand({
                 Bucket: this.bucket,
                 Key: key,
-                Body: file.buffer,
-                ContentType: file.mimetype || 'image/png',
-            }));
-            const baseUrl = process.env.AWS_S3_PUBLIC_BASE_URL;
-            const url = baseUrl
-                ? `${baseUrl}/${key}`
-                : `https://${this.bucket}.s3.${process.env.AWS_S3_REGION || 'us-east-1'}.amazonaws.com/${key}`;
-            return { url, key };
-        }
-        catch (error) {
-            throw new common_1.InternalServerErrorException('Failed to upload avatar');
-        }
-    }
-    async uploadProductImage(productId, file) {
-        try {
-            console.log('S3 Upload attempt:', {
-                bucket: this.bucket,
-                region: process.env.AWS_S3_REGION,
-                productId,
-                fileSize: file.size,
-                hasCredentials: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY),
-            });
-            const ext = (file.originalname.split('.').pop() || 'png').toLowerCase();
-            const key = `products/${productId}/${(0, crypto_1.randomUUID)()}.${ext}`;
-            await this.client.send(new client_s3_1.PutObjectCommand({
-                Bucket: this.bucket,
-                Key: key,
-                Body: file.buffer,
-                ContentType: file.mimetype || 'image/png',
+                Body: buffer,
+                ContentType: mimetype,
             }));
             const baseUrl = process.env.AWS_S3_PUBLIC_BASE_URL;
             const url = baseUrl
@@ -76,8 +48,11 @@ let S3Service = class S3Service {
                 statusCode: error.$metadata?.httpStatusCode,
                 requestId: error.$metadata?.requestId,
             });
-            throw new common_1.InternalServerErrorException('Failed to upload product image: ' + error.message);
+            throw new common_1.InternalServerErrorException(`Failed to upload file to S3: ${error.message}`);
         }
+    }
+    async uploadAvatar(userId, file) {
+        return this.upload(file.buffer, `avatars/${userId}`, 'jpg', file.mimetype);
     }
 };
 exports.S3Service = S3Service;

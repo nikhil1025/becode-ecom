@@ -34,6 +34,8 @@ const featured_categories_module_1 = require("./featured-categories/featured-cat
 const navigation_module_1 = require("./navigation/navigation.module");
 const newsletter_module_1 = require("./newsletter/newsletter.module");
 const community_module_1 = require("./community/community.module");
+const wallet_module_1 = require("./wallet/wallet.module");
+const refunds_module_1 = require("./refunds/refunds.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -65,6 +67,8 @@ exports.AppModule = AppModule = __decorate([
             navigation_module_1.NavigationModule,
             newsletter_module_1.NewsletterModule,
             community_module_1.CommunityModule,
+            wallet_module_1.WalletModule,
+            refunds_module_1.RefundsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, prisma_service_1.PrismaService],

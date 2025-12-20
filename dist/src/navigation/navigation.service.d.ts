@@ -10,9 +10,9 @@ export declare class NavigationService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         type: import("@prisma/client").$Enums.NavigationType;
         description: string | null;
+        isActive: boolean;
         refId: string | null;
         label: string;
     }>;
@@ -22,9 +22,9 @@ export declare class NavigationService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         type: import("@prisma/client").$Enums.NavigationType;
         description: string | null;
+        isActive: boolean;
         refId: string | null;
         label: string;
     }[]>;
@@ -34,9 +34,9 @@ export declare class NavigationService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         type: import("@prisma/client").$Enums.NavigationType;
         description: string | null;
+        isActive: boolean;
         refId: string | null;
         label: string;
     }>;
@@ -46,9 +46,9 @@ export declare class NavigationService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         type: import("@prisma/client").$Enums.NavigationType;
         description: string | null;
+        isActive: boolean;
         refId: string | null;
         label: string;
     }>;
@@ -58,9 +58,9 @@ export declare class NavigationService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
         type: import("@prisma/client").$Enums.NavigationType;
         description: string | null;
+        isActive: boolean;
         refId: string | null;
         label: string;
     }>;

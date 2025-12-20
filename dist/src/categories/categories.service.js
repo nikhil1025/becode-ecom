@@ -12,13 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CategoriesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma.service");
-const s3_service_1 = require("../storage/s3.service");
+const file_upload_service_1 = require("../common/services/file-upload.service");
 let CategoriesService = class CategoriesService {
     prisma;
-    s3;
-    constructor(prisma, s3) {
+    fileUploadService;
+    constructor(prisma, fileUploadService) {
         this.prisma = prisma;
-        this.s3 = s3;
+        this.fileUploadService = fileUploadService;
     }
     async findAll() {
         try {
@@ -198,7 +198,7 @@ let CategoriesService = class CategoriesService {
     }
     async uploadImage(file) {
         try {
-            const { url } = await this.s3.uploadProductImage('categories', file);
+            const { url } = await this.fileUploadService.uploadImage(file, 'categories', { width: 500, height: 500 });
             return url;
         }
         catch (error) {
@@ -210,6 +210,6 @@ exports.CategoriesService = CategoriesService;
 exports.CategoriesService = CategoriesService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        s3_service_1.S3Service])
+        file_upload_service_1.FileUploadService])
 ], CategoriesService);
 //# sourceMappingURL=categories.service.js.map

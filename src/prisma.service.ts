@@ -12,6 +12,10 @@ export class PrismaService
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     const adapter = new PrismaPg(pool);
     super({ adapter });
+
+    // Note: $use middleware is deprecated in Prisma 5+
+    // Soft delete logic is now handled at the service layer
+    // by explicitly setting isDeleted and deletedAt fields
   }
 
   async onModuleInit() {

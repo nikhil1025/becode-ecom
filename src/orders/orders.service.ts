@@ -4,15 +4,18 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderItemStatus, OrderStatus, PaymentStatus } from '@prisma/client';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma.service';
+import { WalletService } from '../wallet/wallet.service';
+import { CancelItemsDto } from './dto';
 
 @Injectable()
 export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private walletService: WalletService,
   ) {}
 
   async createOrder(
@@ -58,78 +61,121 @@ export class OrdersService {
 
       const { items, shippingAddress, billingAddress } = data;
 
-      const subtotal = items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
-      const tax = subtotal * 0.1;
-      const shipping = subtotal > 50 ? 0 : 10;
-      const total = subtotal + tax + shipping;
+      return await this.prisma.$transaction(async (tx) => {
+        // 1. Validate stock and prepare updates
+        const stockUpdates: Promise<any>[] = [];
+        for (const item of items) {
+          if (item.variantId) {
+            const variant = await tx.productVariant.findUnique({
+              where: { id: item.variantId },
+            });
+            if (!variant || variant.stockQuantity < item.quantity) {
+              throw new BadRequestException(
+                `Not enough stock for variant ${variant?.name || item.variantId}`,
+              );
+            }
+            stockUpdates.push(
+              tx.productVariant.update({
+                where: { id: item.variantId },
+                data: { stockQuantity: { decrement: item.quantity } },
+              }),
+            );
+          } else {
+            const product = await tx.product.findUnique({
+              where: { id: item.productId },
+            });
+            if (!product || product.stockQuantity < item.quantity) {
+              throw new BadRequestException(
+                `Not enough stock for product ${product?.name || item.productId}`,
+              );
+            }
+            stockUpdates.push(
+              tx.product.update({
+                where: { id: item.productId },
+                data: { stockQuantity: { decrement: item.quantity } },
+              }),
+            );
+          }
+        }
 
-      const order = await this.prisma.order.create({
-        data: {
-          userId,
-          orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-          status: OrderStatus.PENDING,
-          paymentStatus: PaymentStatus.PENDING,
-          subtotal,
-          tax,
-          shipping,
-          total,
-          shippingAddress: shippingAddress || {},
-          billingAddress: billingAddress || shippingAddress || {},
-          items: {
-            create: items.map((item) => ({
-              productId: item.productId,
-              variantId: item.variantId,
-              quantity: item.quantity,
-              price: item.price,
-              productSnapshot: {
-                name: '', // Will be filled from product
+        // 2. Execute stock updates
+        await Promise.all(stockUpdates);
+
+        // 3. Create the order
+        const subtotal = items.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0,
+        );
+        const tax = subtotal * 0.1;
+        const shipping = subtotal > 50 ? 0 : 10;
+        const total = subtotal + tax + shipping;
+
+        const order = await tx.order.create({
+          data: {
+            userId,
+            orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+            status: OrderStatus.PENDING,
+            paymentStatus: PaymentStatus.PENDING,
+            subtotal,
+            tax,
+            shipping,
+            total,
+            shippingAddress: shippingAddress || {},
+            billingAddress: billingAddress || shippingAddress || {},
+            items: {
+              create: items.map((item) => ({
+                productId: item.productId,
+                variantId: item.variantId,
+                quantity: item.quantity,
                 price: item.price,
-              },
-            })),
-          },
-        },
-        include: {
-          items: {
-            include: {
-              product: {
-                include: {
-                  images: true,
+                status: OrderItemStatus.PLACED,
+                productSnapshot: {
+                  name: '', // Will be filled from product
+                  price: item.price,
                 },
-              },
-              variant: true,
+              })),
             },
           },
-        },
-      });
+          include: {
+            items: {
+              include: {
+                product: {
+                  include: {
+                    images: true,
+                  },
+                },
+                variant: true,
+              },
+            },
+          },
+        });
 
-      // Clear cart after order
-      const cart = await this.prisma.cart.findUnique({ where: { userId } });
-      if (cart) {
-        await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-      }
-
-      // Send order confirmation email
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      if (user?.email) {
-        try {
-          await this.mailService.sendOrderConfirmation(user.email, {
-            orderId: order.orderNumber,
-            totalAmount: total,
-            items: items.map((item) => ({
-              name: item.productId, // TODO: Get actual product name
-              quantity: item.quantity,
-              price: item.price,
-            })),
-          });
-        } catch (error) {
-          console.error('Failed to send order confirmation email:', error);
+        // 4. Clear cart after order
+        const cart = await tx.cart.findUnique({ where: { userId } });
+        if (cart) {
+          await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
         }
-      }
 
-      return order;
+        // 5. Send order confirmation email (outside transaction)
+        const user = await tx.user.findUnique({ where: { id: userId } });
+        if (user?.email) {
+          try {
+            await this.mailService.sendOrderConfirmation(user.email, {
+              orderId: order.orderNumber,
+              totalAmount: total,
+              items: items.map((item) => ({
+                name: item.productId, // TODO: Get actual product name
+                quantity: item.quantity,
+                price: item.price,
+              })),
+            });
+          } catch (error) {
+            console.error('Failed to send order confirmation email:', error);
+          }
+        }
+
+        return order;
+      });
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -138,6 +184,170 @@ export class OrdersService {
         'Failed to create order: ' + error.message,
       );
     }
+  }
+
+  async cancelOrderItems(
+    userId: string,
+    orderId: string,
+    cancelItemsDto: CancelItemsDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Fetch and validate the order
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { items: true },
+      });
+
+      if (!order) {
+        throw new NotFoundException('Order not found.');
+      }
+      if (order.userId !== userId) {
+        throw new NotFoundException(
+          'Order does not belong to the current user.',
+        );
+      }
+
+      // Check tracking status - cancellation only allowed before shipped
+      const allowedTrackingStatuses = ['ORDER_PLACED', 'CONFIRMED', 'PACKED'];
+      if (!allowedTrackingStatuses.includes(order.trackingStatus)) {
+        throw new BadRequestException(
+          `Order cannot be cancelled as it is already ${order.trackingStatus}. Cancellation is only allowed before shipment.`,
+        );
+      }
+
+      const cancellableStatuses: OrderStatus[] = [
+        OrderStatus.PENDING,
+        OrderStatus.PROCESSING,
+        OrderStatus.CONFIRMED,
+      ];
+      if (!cancellableStatuses.includes(order.status)) {
+        throw new BadRequestException(
+          `Order cannot be cancelled in its current status: ${order.status}`,
+        );
+      }
+
+      let totalRefundAmount = 0;
+      const itemsToCancel = cancelItemsDto.items;
+
+      // 2. Validate all items before making changes
+      for (const item of itemsToCancel) {
+        const orderItem = order.items.find((oi) => oi.id === item.orderItemId);
+
+        if (!orderItem) {
+          throw new BadRequestException(
+            `Order item ${item.orderItemId} not found in this order.`,
+          );
+        }
+        if (orderItem.status === OrderItemStatus.CANCELLED) {
+          throw new BadRequestException(
+            `Order item ${item.orderItemId} is already cancelled.`,
+          );
+        }
+        if (orderItem.status === OrderItemStatus.RETURNED) {
+          throw new BadRequestException(
+            `Order item ${item.orderItemId} is already returned and cannot be cancelled.`,
+          );
+        }
+      }
+
+      // 3. Process cancellations
+      for (const item of itemsToCancel) {
+        const orderItem = order.items.find((oi) => oi.id === item.orderItemId);
+
+        if (orderItem && orderItem.status === OrderItemStatus.PLACED) {
+          // Update item status
+          await tx.orderItem.update({
+            where: { id: orderItem.id },
+            data: {
+              status: OrderItemStatus.CANCELLED,
+              cancellationReason: item.reason,
+              cancelledAt: new Date(),
+            },
+          });
+
+          // Restore stock
+          if (orderItem.variantId) {
+            await tx.productVariant.update({
+              where: { id: orderItem.variantId },
+              data: { stockQuantity: { increment: orderItem.quantity } },
+            });
+          } else {
+            await tx.product.update({
+              where: { id: orderItem.productId },
+              data: { stockQuantity: { increment: orderItem.quantity } },
+            });
+          }
+
+          // Add to total refund amount
+          totalRefundAmount += orderItem.price * orderItem.quantity;
+        }
+      }
+
+      // 4. Trigger refund to user's wallet
+      if (totalRefundAmount > 0) {
+        await this.walletService.credit(
+          userId,
+          totalRefundAmount,
+          `Refund for cancelled items in order ${order.orderNumber}`,
+          order.id,
+        );
+      }
+
+      // 4.5. Send cancellation email notification
+      try {
+        const user = await tx.user.findUnique({ where: { id: userId } });
+        if (user) {
+          const cancelledItems: Array<{
+            name: string;
+            quantity: number;
+            refundAmount: number;
+          }> = [];
+          for (const item of itemsToCancel) {
+            const orderItem = order.items.find(
+              (oi) => oi.id === item.orderItemId,
+            );
+            if (orderItem) {
+              const productSnapshot = orderItem.productSnapshot as any;
+              cancelledItems.push({
+                name: productSnapshot?.name || 'Unknown Product',
+                quantity: orderItem.quantity,
+                refundAmount: orderItem.price * orderItem.quantity,
+              });
+            }
+          }
+
+          await this.mailService.sendOrderCancellation(user.email, {
+            orderNumber: order.orderNumber,
+            cancelledItems,
+            totalRefund: totalRefundAmount,
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send cancellation email:', emailError);
+      }
+
+      // 5. Check if all items are cancelled and update order status
+      const updatedOrderItems = await tx.orderItem.findMany({
+        where: { orderId: order.id },
+      });
+
+      const allItemsCancelled = updatedOrderItems.every(
+        (item) => item.status === OrderItemStatus.CANCELLED,
+      );
+
+      if (allItemsCancelled) {
+        return tx.order.update({
+          where: { id: order.id },
+          data: { status: OrderStatus.CANCELLED },
+          include: { items: true },
+        });
+      }
+
+      return tx.order.findUnique({
+        where: { id: order.id },
+        include: { items: true },
+      });
+    });
   }
 
   async getUserOrders(userId: string): Promise<any[]> {
@@ -322,50 +532,6 @@ export class OrdersService {
     }
   }
 
-  async cancelOrder(userId: string, orderId: string): Promise<any> {
-    try {
-      if (!userId) {
-        throw new BadRequestException('User ID is required');
-      }
-      if (!orderId) {
-        throw new BadRequestException('Order ID is required');
-      }
-
-      const order = await this.prisma.order.findFirst({
-        where: {
-          id: orderId,
-          userId,
-        },
-      });
-
-      if (!order) {
-        throw new NotFoundException('Order not found');
-      }
-
-      if (
-        order.status !== OrderStatus.PENDING &&
-        order.status !== OrderStatus.PROCESSING
-      ) {
-        throw new BadRequestException('Cannot cancel order in current status');
-      }
-
-      return this.prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.CANCELLED },
-      });
-    } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to cancel order: ' + error.message,
-      );
-    }
-  }
-
   // Admin methods
   async getAllOrders(
     page = 1,
@@ -422,6 +588,110 @@ export class OrdersService {
       }
       throw new InternalServerErrorException(
         'Failed to retrieve orders: ' + error.message,
+      );
+    }
+  }
+
+  async getCancelledOrders(
+    page = 1,
+    limit = 20,
+  ): Promise<{ orders: any[]; pagination: any }> {
+    try {
+      if (page < 1) {
+        throw new BadRequestException('Page must be at least 1');
+      }
+      if (limit < 1 || limit > 100) {
+        throw new BadRequestException('Limit must be between 1 and 100');
+      }
+
+      const skip = (page - 1) * limit;
+
+      const [orders, total] = await Promise.all([
+        this.prisma.order.findMany({
+          where: {
+            OR: [
+              { status: OrderStatus.CANCELLED },
+              {
+                items: {
+                  some: {
+                    status: OrderItemStatus.CANCELLED,
+                  },
+                },
+              },
+            ],
+          },
+          skip,
+          take: limit,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            items: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    images: {
+                      where: { isFeatured: true },
+                      take: 1,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            updatedAt: 'desc',
+          },
+        }),
+        this.prisma.order.count({
+          where: {
+            OR: [
+              { status: OrderStatus.CANCELLED },
+              {
+                items: {
+                  some: {
+                    status: OrderItemStatus.CANCELLED,
+                  },
+                },
+              },
+            ],
+          },
+        }),
+      ]);
+
+      // Transform orders to include cancelled items details
+      const transformedOrders = orders.map((order) => ({
+        ...order,
+        cancelledItems: order.items.filter(
+          (item) => item.status === OrderItemStatus.CANCELLED,
+        ),
+        hasCancelledItems: order.items.some(
+          (item) => item.status === OrderItemStatus.CANCELLED,
+        ),
+      }));
+
+      return {
+        orders: transformedOrders,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to retrieve cancelled orders: ' + error.message,
       );
     }
   }
@@ -590,106 +860,6 @@ export class OrdersService {
       }
       throw new InternalServerErrorException(
         'Failed to get order tracking: ' + error.message,
-      );
-    }
-  }
-
-  async requestReturn(
-    userId: string,
-    orderId: string,
-    reason: string,
-    items?: string[],
-  ): Promise<any> {
-    try {
-      if (!userId || !orderId || !reason) {
-        throw new BadRequestException(
-          'User ID, Order ID, and reason are required',
-        );
-      }
-
-      const order = await this.prisma.order.findFirst({
-        where: { id: orderId, userId },
-      });
-
-      if (!order) {
-        throw new NotFoundException('Order not found');
-      }
-
-      if (order.status !== OrderStatus.DELIVERED) {
-        throw new BadRequestException(
-          'Can only request return for delivered orders',
-        );
-      }
-
-      // Create return request (simplified - would need a Return model in production)
-      const returnRequest = {
-        id: `RET-${Date.now()}`,
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        userId,
-        reason,
-        items: items || [],
-        status: 'PENDING',
-        createdAt: new Date(),
-      };
-
-      // In production, save to database
-      return returnRequest;
-    } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to request return: ' + error.message,
-      );
-    }
-  }
-
-  async getAllReturns(
-    page = 1,
-    limit = 20,
-  ): Promise<{ returns: any[]; pagination: any }> {
-    try {
-      // Simplified - would query Return model in production
-      await Promise.resolve();
-      return {
-        returns: [],
-        pagination: {
-          page,
-          limit,
-          total: 0,
-          totalPages: 0,
-        },
-      };
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Failed to retrieve returns: ' + error.message,
-      );
-    }
-  }
-
-  async updateReturnStatus(returnId: string, status: string): Promise<any> {
-    try {
-      if (!returnId || !status) {
-        throw new BadRequestException('Return ID and status are required');
-      }
-      await Promise.resolve();
-
-      // Simplified - would update Return model in production
-      return {
-        id: returnId,
-        status,
-        updatedAt: new Date(),
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to update return status: ' + error.message,
       );
     }
   }
