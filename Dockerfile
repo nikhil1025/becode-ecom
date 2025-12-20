@@ -14,6 +14,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma.config.ts ./
 
 # =====================================
 # Stage 2: Production dependencies
@@ -64,6 +65,7 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy built application and Prisma files
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/package*.json ./
 
 # Create uploads directory
