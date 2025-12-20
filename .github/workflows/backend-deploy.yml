@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: ${{ env.APP_FOLDER }}/package-lock.json
+          cache-dependency-path: repo/${{ env.APP_FOLDER }}/package-lock.json
 
       # =================================
       # 3. Navigate to Backend & Install
