@@ -66,13 +66,15 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package*.json ./
 
-# Create uploads directory with proper permissions
+# Create uploads directory
 RUN mkdir -p /app/uploads/products \
     /app/uploads/avatars \
     /app/uploads/brands \
     /app/uploads/categories \
-    /app/uploads/returns && \
-    chown -R nestjs:nodejs /app/uploads
+    /app/uploads/returns
+
+# Change ownership of ENTIRE /app directory to nestjs user (including node_modules)
+RUN chown -R nestjs:nodejs /app
 
 # Switch to non-root user
 USER nestjs
