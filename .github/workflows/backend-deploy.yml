@@ -45,6 +45,8 @@ jobs:
       # 4. Generate Prisma Client
       # =================================
       - name: Generate Prisma Client
+        env:
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
         run: |
           echo "🔧 Generating Prisma Client..."
           npx prisma generate
