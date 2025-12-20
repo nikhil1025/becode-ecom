@@ -125,43 +125,36 @@ jobs:
             # CRITICAL: Generate .env from Secrets
             # =================================
             echo "🔐 Creating .env file from GitHub Secrets..."
-            cat > .env <<'EOF'
-            # Database
-            DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            cat > .env <<EOF
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
 
-            # JWT
-            JWT_SECRET="${{ secrets.JWT_SECRET }}"
-            ADMIN_JWT_SECRET="${{ secrets.ADMIN_JWT_SECRET }}"
-            JWT_EXPIRES_IN="${{ secrets.JWT_EXPIRES_IN }}"
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }}
+            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
 
-            # AWS S3
-            AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
-            AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-            AWS_S3_BUCKET="${{ secrets.AWS_S3_BUCKET }}"
-            AWS_REGION="${{ secrets.AWS_REGION }}"
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
 
-            # Email (Brevo/SMTP)
-            BREVO_SMTP_HOST="${{ secrets.BREVO_SMTP_HOST }}"
-            BREVO_SMTP_PORT="${{ secrets.BREVO_SMTP_PORT }}"
-            BREVO_SMTP_USER="${{ secrets.BREVO_SMTP_USER }}"
-            BREVO_SMTP_PASSWORD="${{ secrets.BREVO_SMTP_PASSWORD }}"
-            MAIL_FROM="${{ secrets.MAIL_FROM }}"
-            ADMIN_EMAIL="${{ secrets.ADMIN_EMAIL }}"
+            BREVO_SMTP_HOST=${{ secrets.BREVO_SMTP_HOST }}
+            BREVO_SMTP_PORT=${{ secrets.BREVO_SMTP_PORT }}
+            BREVO_SMTP_USER=${{ secrets.BREVO_SMTP_USER }}
+            BREVO_SMTP_PASSWORD=${{ secrets.BREVO_SMTP_PASSWORD }}
+            MAIL_FROM=${{ secrets.MAIL_FROM }}
+            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
 
-            # Google OAuth
-            GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
-            GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
-            GOOGLE_CALLBACK_URL="${{ secrets.GOOGLE_CALLBACK_URL }}"
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_CALLBACK_URL=${{ secrets.GOOGLE_CALLBACK_URL }}
 
-            # Razorpay
-            RAZORPAY_KEY_ID="${{ secrets.RAZORPAY_KEY_ID }}"
-            RAZORPAY_KEY_SECRET="${{ secrets.RAZORPAY_KEY_SECRET }}"
+            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
 
-            # App Configuration
-            PORT=3001
             NODE_ENV=production
-            FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
-            BASE_URL="${{ secrets.BASE_URL }}"
+            PORT=3001
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            BASE_URL=${{ secrets.BASE_URL }}
             EOF
 
             echo "✅ .env file created successfully"
