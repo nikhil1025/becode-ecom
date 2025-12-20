@@ -18,7 +18,7 @@ jobs:
   deploy-backend:
     name: Deploy Backend Independently
     runs-on: ubuntu-latest
-    
+
     steps:
       # =================================
       # 1. Checkout Repository
@@ -32,8 +32,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: package-lock.json
 
       # =================================
@@ -101,25 +101,25 @@ jobs:
           port: 22
           script: |
             set -e
-            
+
             echo "🚀 Starting Backend Deployment..."
-            
+
             # Variables
             DEPLOY_DIR="/home/${{ secrets.EC2_USER }}/ecom-backend"
             CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
             IMAGE_NAME="${{ env.DOCKER_IMAGE }}"
-            
+
             # Create deployment directory
             mkdir -p $DEPLOY_DIR
-            
+
             # Extract deployment package
             echo "📦 Extracting package..."
             tar -xzf /tmp/backend-deploy.tar.gz -C $DEPLOY_DIR
             rm /tmp/backend-deploy.tar.gz
-            
+
             # Navigate to backend folder
             cd $DEPLOY_DIR
-            
+
             # =================================
             # CRITICAL: Generate .env from Secrets
             # =================================
@@ -127,18 +127,18 @@ jobs:
             cat > .env <<'EOF'
             # Database
             DATABASE_URL="${{ secrets.DATABASE_URL }}"
-            
+
             # JWT
             JWT_SECRET="${{ secrets.JWT_SECRET }}"
             ADMIN_JWT_SECRET="${{ secrets.ADMIN_JWT_SECRET }}"
             JWT_EXPIRES_IN="${{ secrets.JWT_EXPIRES_IN }}"
-            
+
             # AWS S3
             AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
             AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
             AWS_S3_BUCKET="${{ secrets.AWS_S3_BUCKET }}"
             AWS_REGION="${{ secrets.AWS_REGION }}"
-            
+
             # Email (Brevo/SMTP)
             BREVO_SMTP_HOST="${{ secrets.BREVO_SMTP_HOST }}"
             BREVO_SMTP_PORT="${{ secrets.BREVO_SMTP_PORT }}"
@@ -146,49 +146,49 @@ jobs:
             BREVO_SMTP_PASSWORD="${{ secrets.BREVO_SMTP_PASSWORD }}"
             MAIL_FROM="${{ secrets.MAIL_FROM }}"
             ADMIN_EMAIL="${{ secrets.ADMIN_EMAIL }}"
-            
+
             # Google OAuth
             GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
             GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
             GOOGLE_CALLBACK_URL="${{ secrets.GOOGLE_CALLBACK_URL }}"
-            
+
             # Razorpay
             RAZORPAY_KEY_ID="${{ secrets.RAZORPAY_KEY_ID }}"
             RAZORPAY_KEY_SECRET="${{ secrets.RAZORPAY_KEY_SECRET }}"
-            
+
             # App Configuration
             PORT=3001
             NODE_ENV=production
             FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
             BASE_URL="${{ secrets.BASE_URL }}"
             EOF
-            
+
             echo "✅ .env file created successfully"
-            
+
             # Backup existing container
             if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
               echo "💾 Creating backup..."
               docker commit $CONTAINER_NAME ${IMAGE_NAME}-backup:$(date +%Y%m%d-%H%M%S) || true
             fi
-            
+
             # Build new Docker image
             echo "🔨 Building Docker image..."
             docker build -t $IMAGE_NAME:latest .
-            
+
             # Stop and remove old container
             if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
               echo "🛑 Stopping existing container..."
               docker stop $CONTAINER_NAME
             fi
-            
+
             if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
               echo "🗑️ Removing old container..."
               docker rm $CONTAINER_NAME
             fi
-            
+
             # Create uploads volume
             docker volume create ecom-backend-uploads || true
-            
+
             # Run new container
             echo "🚢 Starting new container..."
             docker run -d \
@@ -198,11 +198,11 @@ jobs:
               --env-file .env \
               -v ecom-backend-uploads:/app/uploads \
               $IMAGE_NAME:latest
-            
+
             # Wait for container
             echo "⏳ Waiting for container to start..."
             sleep 20
-            
+
             # Check container status
             if [ "$(docker ps -q -f name=$CONTAINER_NAME -f status=running)" ]; then
               echo "✅ Backend deployment successful!"
@@ -230,11 +230,11 @@ jobs:
               
               exit 1
             fi
-            
+
             # Cleanup old images
             echo "🧹 Cleaning up old images..."
             docker images ${IMAGE_NAME} --format "{{.ID}}" | tail -n +4 | xargs -r docker rmi || true
-            
+
             echo "✨ Backend deployment complete!"
 
       # =================================
