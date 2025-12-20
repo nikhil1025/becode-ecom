@@ -1,0 +1,71 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+    container_name: bcode-backend
+    ports:
+      - "3001:3001"
+    environment:
+      # Database
+      - DATABASE_URL=${DATABASE_URL}
+
+      # Authentication
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}
+
+      # Frontend CORS
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - BASE_URL=${BASE_URL:-http://localhost:3001}
+
+      # Payment Gateway
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+
+      # Google OAuth (Optional)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_CALLBACK_URL=${GOOGLE_CALLBACK_URL:-}
+
+      # AWS S3 (Optional)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_S3_REGION=${AWS_S3_REGION:-us-east-1}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
+      - AWS_S3_PUBLIC_BASE_URL=${AWS_S3_PUBLIC_BASE_URL:-}
+
+      # Email (Optional)
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
+
+      # Node Environment
+      - NODE_ENV=production
+      - PORT=3001
+
+    volumes:
+      - ./uploads:/app/uploads
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    networks:
+      - ecom-network
+
+networks:
+  ecom-network:
+    driver: bridge
