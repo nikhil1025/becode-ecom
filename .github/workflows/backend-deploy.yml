@@ -172,9 +172,11 @@ jobs:
               docker commit $CONTAINER_NAME ${IMAGE_NAME}-backup:$(date +%Y%m%d-%H%M%S) || true
             fi
 
-            # Build new Docker image
+            # Build new Docker image with DATABASE_URL as build arg
             echo "🔨 Building Docker image..."
-            docker build -t $IMAGE_NAME:latest .
+            docker build \
+              --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -t $IMAGE_NAME:latest .
 
             # Stop and remove old container
             if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then

@@ -28,6 +28,10 @@ RUN npm ci --only=production && npm cache clean --force
 # =====================================
 FROM base AS builder
 
+# Accept DATABASE_URL as build argument (passed from docker build command)
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
+
 # Install all dependencies (including dev)
 RUN npm ci && npm cache clean --force
 
