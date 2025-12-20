@@ -24,7 +24,6 @@ FROM base AS deps
 ENV NODE_ENV=production
 
 RUN npm ci --only=production
-RUN npx prisma generate
 RUN npm cache clean --force
 
 
@@ -44,7 +43,7 @@ RUN npm ci && npm cache clean --force
 COPY . .
 
 # Generate Prisma Client
-RUN npx prisma generate
+# RUN npx prisma generate
 
 # Build NestJS application
 RUN npm run build
