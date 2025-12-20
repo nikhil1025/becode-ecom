@@ -1,0 +1,278 @@
+name: Backend CI/CD - Isolated Deployment
+
+# =====================================
+# Trigger ONLY on backend folder changes
+# =====================================
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'bcode-ecom/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+env:
+  APP_FOLDER: bcode-ecom
+  DOCKER_IMAGE: ecom-backend
+  CONTAINER_NAME: ecom-backend
+  DEPLOY_PORT: 3000
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend Independently
+    runs-on: ubuntu-latest
+    
+    steps:
+      # =================================
+      # 1. Checkout Repository
+      # =================================
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # =================================
+      # 2. Setup Node.js
+      # =================================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ env.APP_FOLDER }}/package-lock.json
+
+      # =================================
+      # 3. Navigate to Backend & Install
+      # =================================
+      - name: Install Dependencies
+        working-directory: ./${{ env.APP_FOLDER }}
+        run: |
+          echo "📦 Installing backend dependencies..."
+          npm ci
+
+      # =================================
+      # 4. Generate Prisma Client
+      # =================================
+      - name: Generate Prisma Client
+        working-directory: ./${{ env.APP_FOLDER }}
+        run: |
+          echo "🔧 Generating Prisma Client..."
+          npx prisma generate
+
+      # =================================
+      # 5. Build Backend
+      # =================================
+      - name: Build Backend Application
+        working-directory: ./${{ env.APP_FOLDER }}
+        run: |
+          echo "🔨 Building backend..."
+          npm run build
+
+      # =================================
+      # 6. Create Deployment Archive
+      # =================================
+      - name: Create Deployment Package
+        run: |
+          echo "📦 Creating deployment archive..."
+          cd ${{ env.APP_FOLDER }}
+          tar -czf ../backend-deploy.tar.gz \
+            --exclude='node_modules' \
+            --exclude='.git' \
+            --exclude='test' \
+            --exclude='coverage' \
+            --exclude='uploads' \
+            --exclude='.env*' \
+            .
+          cd ..
+          ls -lh backend-deploy.tar.gz
+
+      # =================================
+      # 7. Copy to EC2
+      # =================================
+      - name: Copy Package to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "backend-deploy.tar.gz"
+          target: "/tmp/"
+
+      # =================================
+      # 8. Deploy on EC2
+      # =================================
+      - name: Deploy Backend on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            
+            echo "🚀 Starting Backend Deployment..."
+            
+            # Variables
+            DEPLOY_DIR="/home/${{ secrets.EC2_USER }}/ecom-backend"
+            CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
+            IMAGE_NAME="${{ env.DOCKER_IMAGE }}"
+            
+            # Create deployment directory
+            mkdir -p $DEPLOY_DIR
+            
+            # Extract deployment package
+            echo "📦 Extracting package..."
+            tar -xzf /tmp/backend-deploy.tar.gz -C $DEPLOY_DIR
+            rm /tmp/backend-deploy.tar.gz
+            
+            # Navigate to backend folder
+            cd $DEPLOY_DIR
+            
+            # =================================
+            # CRITICAL: Generate .env from Secrets
+            # =================================
+            echo "🔐 Creating .env file from GitHub Secrets..."
+            cat > .env <<'EOF'
+            # Database
+            DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            
+            # JWT
+            JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            ADMIN_JWT_SECRET="${{ secrets.ADMIN_JWT_SECRET }}"
+            JWT_EXPIRES_IN="${{ secrets.JWT_EXPIRES_IN }}"
+            
+            # AWS S3
+            AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
+            AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+            AWS_S3_BUCKET="${{ secrets.AWS_S3_BUCKET }}"
+            AWS_REGION="${{ secrets.AWS_REGION }}"
+            
+            # Email (Brevo/SMTP)
+            BREVO_SMTP_HOST="${{ secrets.BREVO_SMTP_HOST }}"
+            BREVO_SMTP_PORT="${{ secrets.BREVO_SMTP_PORT }}"
+            BREVO_SMTP_USER="${{ secrets.BREVO_SMTP_USER }}"
+            BREVO_SMTP_PASSWORD="${{ secrets.BREVO_SMTP_PASSWORD }}"
+            MAIL_FROM="${{ secrets.MAIL_FROM }}"
+            ADMIN_EMAIL="${{ secrets.ADMIN_EMAIL }}"
+            
+            # Google OAuth
+            GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+            GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            GOOGLE_CALLBACK_URL="${{ secrets.GOOGLE_CALLBACK_URL }}"
+            
+            # Razorpay
+            RAZORPAY_KEY_ID="${{ secrets.RAZORPAY_KEY_ID }}"
+            RAZORPAY_KEY_SECRET="${{ secrets.RAZORPAY_KEY_SECRET }}"
+            
+            # App Configuration
+            PORT=3000
+            NODE_ENV=production
+            FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+            BASE_URL="${{ secrets.BASE_URL }}"
+            EOF
+            
+            echo "✅ .env file created successfully"
+            
+            # Backup existing container
+            if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
+              echo "💾 Creating backup..."
+              docker commit $CONTAINER_NAME ${IMAGE_NAME}-backup:$(date +%Y%m%d-%H%M%S) || true
+            fi
+            
+            # Build new Docker image
+            echo "🔨 Building Docker image..."
+            docker build -t $IMAGE_NAME:latest .
+            
+            # Stop and remove old container
+            if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
+              echo "🛑 Stopping existing container..."
+              docker stop $CONTAINER_NAME
+            fi
+            
+            if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
+              echo "🗑️ Removing old container..."
+              docker rm $CONTAINER_NAME
+            fi
+            
+            # Create uploads volume
+            docker volume create ecom-backend-uploads || true
+            
+            # Run new container
+            echo "🚢 Starting new container..."
+            docker run -d \
+              --name $CONTAINER_NAME \
+              --restart unless-stopped \
+              -p ${{ env.DEPLOY_PORT }}:3000 \
+              --env-file .env \
+              -v ecom-backend-uploads:/app/uploads \
+              $IMAGE_NAME:latest
+            
+            # Wait for container
+            echo "⏳ Waiting for container to start..."
+            sleep 20
+            
+            # Check container status
+            if [ "$(docker ps -q -f name=$CONTAINER_NAME -f status=running)" ]; then
+              echo "✅ Backend deployment successful!"
+              echo ""
+              echo "📋 Container logs:"
+              docker logs --tail 50 $CONTAINER_NAME
+            else
+              echo "❌ Backend deployment failed!"
+              echo ""
+              echo "📋 Container logs:"
+              docker logs --tail 100 $CONTAINER_NAME
+              
+              # Attempt rollback
+              BACKUP_IMAGE=$(docker images -q ${IMAGE_NAME}-backup --format "{{.Repository}}:{{.Tag}}" | head -n 1)
+              if [ ! -z "$BACKUP_IMAGE" ]; then
+                echo "🔄 Rolling back to backup..."
+                docker run -d \
+                  --name $CONTAINER_NAME \
+                  --restart unless-stopped \
+                  -p ${{ env.DEPLOY_PORT }}:3000 \
+                  --env-file .env \
+                  -v ecom-backend-uploads:/app/uploads \
+                  $BACKUP_IMAGE
+              fi
+              
+              exit 1
+            fi
+            
+            # Cleanup old images
+            echo "🧹 Cleaning up old images..."
+            docker images ${IMAGE_NAME} --format "{{.ID}}" | tail -n +4 | xargs -r docker rmi || true
+            
+            echo "✨ Backend deployment complete!"
+
+      # =================================
+      # 9. Verify Deployment
+      # =================================
+      - name: Verify Backend Health
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            echo "🔍 Verifying backend deployment..."
+            docker ps -f name=${{ env.CONTAINER_NAME }} --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            echo ""
+            echo "📋 Recent logs:"
+            docker logs --tail 30 ${{ env.CONTAINER_NAME }}
+            echo ""
+            echo "🏥 Health check:"
+            sleep 5
+            curl -f http://localhost:${{ env.DEPLOY_PORT }}/health || echo "⚠️ Health endpoint not responding"
+
+      # =================================
+      # 10. Notify on Failure
+      # =================================
+      - name: Deployment Failed
+        if: failure()
+        run: |
+          echo "❌ Backend deployment failed!"
+          echo "Check the logs above for details."
+          exit 1
