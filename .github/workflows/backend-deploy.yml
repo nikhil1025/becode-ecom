@@ -177,17 +177,16 @@ jobs:
             docker build \
               --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -t $IMAGE_NAME:latest .
+            
+            echo "🧬 Running Prisma migrations..."
+            docker run --rm \
+              --env-file .env \
+              $IMAGE_NAME:latest \
+              npx prisma migrate deploy
 
-            # Stop and remove old container
-            if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
-              echo "🛑 Stopping existing container..."
-              docker stop $CONTAINER_NAME
-            fi
-
-            if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
-              echo "🗑️ Removing old container..."
-              docker rm $CONTAINER_NAME
-            fi
+            echo "🧹 Removing existing container if any..."
+            docker rm -f $CONTAINER_NAME || true
+            sleep 2
 
             # Create uploads volume
             docker volume create ecom-backend-uploads || true
