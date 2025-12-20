@@ -72,6 +72,7 @@ jobs:
             --exclude='coverage' \
             --exclude='uploads' \
             --exclude='.env*' \
+            --exclude='backend-deploy.tar.gz' \
             .
           ls -lh backend-deploy.tar.gz
 
