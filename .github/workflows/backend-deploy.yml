@@ -16,7 +16,7 @@ env:
   APP_FOLDER: bcode-ecom
   DOCKER_IMAGE: ecom-backend
   CONTAINER_NAME: ecom-backend
-  DEPLOY_PORT: 3000
+  DEPLOY_PORT: 3001
 
 jobs:
   deploy-backend:
@@ -29,6 +29,18 @@ jobs:
       # =================================
       - name: Checkout Code
         uses: actions/checkout@v4
+      
+      - name: Debug repo structure
+        run: |
+          echo "=== ROOT ==="
+          ls -la
+          echo ""
+          echo "=== APP_FOLDER ==="
+          ls -la ${{ env.APP_FOLDER }}
+          echo ""
+          echo "=== package-lock.json ==="
+          ls -la ${{ env.APP_FOLDER }}/package-lock.json
+
 
       # =================================
       # 2. Setup Node.js
