@@ -1,8 +1,5 @@
 name: Backend CI/CD - Isolated Deployment
 
-# =====================================
-# Trigger ONLY on backend folder changes
-# =====================================
 on:
   push:
     branches:
