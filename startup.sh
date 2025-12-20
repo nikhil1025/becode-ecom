@@ -2,4 +2,4 @@
 set -e
 
 echo "🚀 Starting NestJS application..."
-exec node dist/main
+exec node dist/src/main

@@ -209,6 +209,8 @@ jobs:
               echo ""
               echo "📋 Container logs:"
               docker logs --tail 100 $CONTAINER_NAME
+
+              docker rm -f $CONTAINER_NAME || true
               
               # Attempt rollback
               BACKUP_IMAGE=$(docker images -q ${IMAGE_NAME}-backup --format "{{.Repository}}:{{.Tag}}" | head -n 1)
