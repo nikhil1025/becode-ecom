@@ -7,13 +7,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'bcode-ecom/**'
-      - '.github/workflows/backend-deploy.yml'
   workflow_dispatch:
 
 env:
-  APP_FOLDER: bcode-ecom
   DOCKER_IMAGE: ecom-backend
   CONTAINER_NAME: ecom-backend
   DEPLOY_PORT: 3001
@@ -29,18 +25,6 @@ jobs:
       # =================================
       - name: Checkout Code
         uses: actions/checkout@v4
-      
-      - name: Debug repo structure
-        run: |
-          echo "=== ROOT ==="
-          ls -la
-          echo ""
-          echo "=== APP_FOLDER ==="
-          ls -la ${{ env.APP_FOLDER }}
-          echo ""
-          echo "=== package-lock.json ==="
-          ls -la ${{ env.APP_FOLDER }}/package-lock.json
-
 
       # =================================
       # 2. Setup Node.js
@@ -50,13 +34,12 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: repo/${{ env.APP_FOLDER }}/package-lock.json
+          cache-dependency-path: package-lock.json
 
       # =================================
-      # 3. Navigate to Backend & Install
+      # 3. Install Dependencies
       # =================================
       - name: Install Dependencies
-        working-directory: ./${{ env.APP_FOLDER }}
         run: |
           echo "📦 Installing backend dependencies..."
           npm ci
@@ -65,7 +48,6 @@ jobs:
       # 4. Generate Prisma Client
       # =================================
       - name: Generate Prisma Client
-        working-directory: ./${{ env.APP_FOLDER }}
         run: |
           echo "🔧 Generating Prisma Client..."
           npx prisma generate
@@ -74,7 +56,6 @@ jobs:
       # 5. Build Backend
       # =================================
       - name: Build Backend Application
-        working-directory: ./${{ env.APP_FOLDER }}
         run: |
           echo "🔨 Building backend..."
           npm run build
@@ -85,8 +66,7 @@ jobs:
       - name: Create Deployment Package
         run: |
           echo "📦 Creating deployment archive..."
-          cd ${{ env.APP_FOLDER }}
-          tar -czf ../backend-deploy.tar.gz \
+          tar -czf backend-deploy.tar.gz \
             --exclude='node_modules' \
             --exclude='.git' \
             --exclude='test' \
@@ -94,7 +74,6 @@ jobs:
             --exclude='uploads' \
             --exclude='.env*' \
             .
-          cd ..
           ls -lh backend-deploy.tar.gz
 
       # =================================
@@ -178,7 +157,7 @@ jobs:
             RAZORPAY_KEY_SECRET="${{ secrets.RAZORPAY_KEY_SECRET }}"
             
             # App Configuration
-            PORT=3000
+            PORT=3001
             NODE_ENV=production
             FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
             BASE_URL="${{ secrets.BASE_URL }}"
@@ -215,7 +194,7 @@ jobs:
             docker run -d \
               --name $CONTAINER_NAME \
               --restart unless-stopped \
-              -p ${{ env.DEPLOY_PORT }}:3000 \
+              -p ${{ env.DEPLOY_PORT }}:3001 \
               --env-file .env \
               -v ecom-backend-uploads:/app/uploads \
               $IMAGE_NAME:latest
@@ -243,7 +222,7 @@ jobs:
                 docker run -d \
                   --name $CONTAINER_NAME \
                   --restart unless-stopped \
-                  -p ${{ env.DEPLOY_PORT }}:3000 \
+                  -p ${{ env.DEPLOY_PORT }}:3001 \
                   --env-file .env \
                   -v ecom-backend-uploads:/app/uploads \
                   $BACKUP_IMAGE
