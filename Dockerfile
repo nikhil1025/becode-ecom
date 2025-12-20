@@ -21,8 +21,12 @@ COPY prisma.config.ts ./
 # =====================================
 FROM base AS deps
 
-# Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
+ENV NODE_ENV=production
+
+RUN npm ci --only=production
+RUN npx prisma generate
+RUN npm cache clean --force
+
 
 # =====================================
 # Stage 3: Build application
