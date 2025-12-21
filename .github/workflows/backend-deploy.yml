@@ -172,27 +172,14 @@ jobs:
               -t $IMAGE_NAME:latest .
 
             echo "🧬 Running Prisma migrations safely..."
-            
-            # Simple approach: just try migrate deploy with proper error handling
-            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy || {
-              echo "⚠️  Migration deploy failed, attempting recovery..."
-              
-              # Check migration status and try to resolve
-              docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
-                echo 'Checking migration status...'
-                npx prisma migrate status || true
-                
-                echo 'Attempting to resolve any failed migrations...'
-                npx prisma migrate resolve --rolled-back 20251221183708_initial_fresh_migration || true
-                
-                echo 'Retrying migration deploy...'
-                npx prisma migrate deploy
-              "
+
+            # For fresh DB setup, use db push to create schema without migration history issues
+            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma db push --force-reset --skip-generate || {
+              echo "⚠️  DB push failed, trying migrate deploy..."
+              docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
             }
 
-            echo "✅ Database migration completed"
-
-            echo "🧹 Removing existing container if any..."
+            echo "✅ Database schema applied successfully"
             docker rm -f $CONTAINER_NAME || true
             sleep 2
 
