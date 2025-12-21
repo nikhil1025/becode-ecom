@@ -71,6 +71,7 @@ build_image() {
     export $(grep -v '^#' .env | xargs)
     
     docker build \
+        --no-cache \
         --build-arg DATABASE_URL="${DATABASE_URL}" \
         --tag ${IMAGE_NAME}:${IMAGE_TAG} \
         --progress=plain \
