@@ -102,6 +102,22 @@ run_container() {
     log_info "Container started ✓"
 }
 
+migrate_db() {
+    log_info "Running database migration..."
+    
+    # For this fresh start, reset and deploy
+    if docker run --rm \
+        --env-file .env \
+        --entrypoint sh \
+        ${IMAGE_NAME}:${IMAGE_TAG} \
+        -c "npx prisma generate && npx prisma migrate reset --force && npx prisma migrate deploy" ; then
+        log_info "Database migration completed ✓"
+    else
+        log_error "Database migration failed!"
+        return 1
+    fi
+}
+
 reset_database() {
     log_warn "Resetting database (this will delete all data)..."
     
@@ -190,6 +206,7 @@ main() {
     backup_current
     stop_current
     build_image
+    migrate_db
     run_container
     
     if wait_for_health; then
