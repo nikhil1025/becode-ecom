@@ -58,8 +58,7 @@ COPY . .
 RUN npm run build
 
 # Verify build output exists
-RUN ls -la dist/ && test -f dist/src/main.js
-
+    RUN ls -la dist/ && test -f dist/main.js
 # =====================================
 # Stage 4: Production runtime
 # =====================================
@@ -118,4 +117,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD node -e "require('http').get('http://65.2.146.90:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
 # Start command with inline Prisma setup
-CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/src/main"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/main"]
