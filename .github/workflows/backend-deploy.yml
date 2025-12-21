@@ -179,7 +179,7 @@ jobs:
               docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
             }
 
-            echo "✅ Database schema applied successfully"
+            echo "✅ Database schema applied success"
             docker rm -f $CONTAINER_NAME || true
             sleep 2
 
