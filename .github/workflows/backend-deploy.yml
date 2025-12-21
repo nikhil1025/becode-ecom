@@ -253,7 +253,7 @@ jobs:
             echo ""
             echo "🏥 Health check:"
             sleep 5
-            curl -f http://172.31.46.224:${{ env.DEPLOY_PORT }}/api/health || echo "⚠️ Health endpoint not responding"
+            curl -f http://${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PORT }}/api/health || echo "⚠️ Health endpoint not responding"
 
       # =================================
       # 10. Notify on Failure
