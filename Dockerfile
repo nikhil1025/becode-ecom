@@ -58,7 +58,7 @@ COPY . .
 RUN npm run build
 
 # Verify build output exists
-    RUN ls -la dist/ && test -f dist/main.js
+RUN ls -la dist/ && test -f dist/main.js
 # =====================================
 # Stage 4: Production runtime
 # =====================================
