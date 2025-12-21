@@ -1,3 +1,11 @@
+-- Drop the entire public schema and recreate it
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+
+-- Grant permissions
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO public;
+
 -- Drop existing types if they exist
 DROP TYPE IF EXISTS "UserRole" CASCADE;
 DROP TYPE IF EXISTS "OrderStatus" CASCADE;
@@ -42,6 +50,7 @@ DROP TABLE IF EXISTS "popular_products" CASCADE;
 DROP TABLE IF EXISTS "newsletters" CASCADE;
 DROP TABLE IF EXISTS "contacts" CASCADE;
 DROP TABLE IF EXISTS "audit_logs" CASCADE;
+DROP TABLE IF EXISTS "brands" CASCADE;
 
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('CUSTOMER', 'ADMIN', 'SUPERADMIN');
