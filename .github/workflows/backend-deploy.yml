@@ -172,65 +172,23 @@ jobs:
               -t $IMAGE_NAME:latest .
 
             echo "🧬 Running Prisma migrations safely..."
-
-            # Check if _prisma_migrations table exists
-            TABLE_EXISTS=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
-              npx prisma db execute --stdin <<'EOSQL'
-            SELECT EXISTS (
-              SELECT FROM information_schema.tables 
-              WHERE table_schema = 'public' 
-              AND table_name = '_prisma_migrations'
-            );
-            EOSQL
-            " 2>&1 | grep -oP '(?<=\[).*?(?=\])' || echo "false")
-
-            if [ "$TABLE_EXISTS" = "true" ]; then
-              echo "✅ _prisma_migrations table exists"
+            
+            # Simple approach: just try migrate deploy with proper error handling
+            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy || {
+              echo "⚠️  Migration deploy failed, attempting recovery..."
               
-              # Check for failed migrations
-              FAILED_MIGRATIONS=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
-                npx prisma migrate status 2>&1 | grep -i 'failed' || echo 'none'
-              ")
-              
-              if [[ "$FAILED_MIGRATIONS" != "none" ]]; then
-                echo "⚠️  Failed migrations detected, resolving..."
-                docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
-                  MIGRATION_NAME=\$(npx prisma migrate status 2>&1 | grep -oP '(?<=The \\\`).*?(?=\\\` migration)' | head -1 || echo '')
-                  if [ ! -z \"\$MIGRATION_NAME\" ]; then
-                    echo \"Resolving failed migration: \$MIGRATION_NAME\"
-                    npx prisma migrate resolve --rolled-back \"\$MIGRATION_NAME\" || true
-                  fi
-                "
-              fi
-              
-              # Apply migrations
-              docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
-            else
-              echo "⚠️  _prisma_migrations does NOT exist, creating..."
-              
-              # First attempt to deploy (creates _prisma_migrations)
-              docker run --rm --env-file .env $IMAGE_NAME:latest \
-                npx prisma migrate deploy || {
-                  echo "⚠️  Initial deploy failed, checking if DB has tables..."
-                  
-                  # Check if DB has existing tables
-                  TABLES_EXIST=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
-                    npx prisma db execute --stdin <<'EOSQL'
-            SELECT COUNT(*) > 0 FROM information_schema.tables 
-            WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-            EOSQL
-                  " 2>&1 | grep -oP '(?<=\[).*?(?=\])' || echo "false")
-                    LATEST_MIGRATION=$(ls -1 prisma/migrations 2>/dev/null | tail -n 1 || echo "")
-                    if [ ! -z "$LATEST_MIGRATION" ]; then
-                      docker run --rm --env-file .env $IMAGE_NAME:latest \
-                        npx prisma migrate resolve --applied "$LATEST_MIGRATION"
-                    fi
-                  else
-                    echo "✨ DB is empty, migrations will apply..."
-                    docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
-                  fi
-                }
-            fi
+              # Check migration status and try to resolve
+              docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
+                echo 'Checking migration status...'
+                npx prisma migrate status || true
+                
+                echo 'Attempting to resolve any failed migrations...'
+                npx prisma migrate resolve --rolled-back 20251221183708_initial_fresh_migration || true
+                
+                echo 'Retrying migration deploy...'
+                npx prisma migrate deploy
+              "
+            }
 
             echo "✅ Database migration completed"
 
