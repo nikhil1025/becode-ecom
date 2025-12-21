@@ -204,7 +204,7 @@ export class AuthService {
 
       // Allow first admin to be created without authentication
       // After that, only authenticated admins can create new admins
-      if (adminCount > 0) {
+      if (adminCount > 2) {
         throw new UnauthorizedException(
           'Admin registration is closed. Please contact an existing administrator.',
         );
