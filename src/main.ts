@@ -7,6 +7,8 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://13.232.186.110:3000';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -16,7 +18,7 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: FRONTEND_URL,
     credentials: true,
   });
 

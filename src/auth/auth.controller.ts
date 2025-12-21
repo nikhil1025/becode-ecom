@@ -18,6 +18,8 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 
 type UserWithoutPassword = Omit<User, 'password'>;
 
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://13.232.186.110:3000';
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -93,7 +95,7 @@ export class AuthController {
 
     // Redirect to frontend with token and user data
     res.redirect(
-      `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/google/callback?token=${token}&user=${user}`,
+      `${FRONTEND_URL}/auth/google/callback?token=${token}&user=${user}`,
     );
   }
 
