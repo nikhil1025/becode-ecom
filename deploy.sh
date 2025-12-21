@@ -102,22 +102,6 @@ run_container() {
     log_info "Container started ✓"
 }
 
-clear_migrations() {
-    log_warn "Clearing all migrations from database..."
-    
-    # Run a temporary container to clear migrations
-    docker run --rm \
-        --env-file .env \
-        --entrypoint sh \
-        ${IMAGE_NAME}:${IMAGE_TAG} \
-        -c "npx prisma migrate reset --force --skip-generate" || {
-            log_error "Failed to clear migrations!"
-            return 1
-        }
-    
-    log_info "Migrations cleared ✓"
-}
-
 reset_database() {
     log_warn "Resetting database (this will delete all data)..."
     
@@ -206,7 +190,6 @@ main() {
     backup_current
     stop_current
     build_image
-    clear_migrations
     run_container
     
     if wait_for_health; then
