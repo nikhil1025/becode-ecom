@@ -101,6 +101,22 @@ run_container() {
     log_info "Container started ✓"
 }
 
+reset_database() {
+    log_warn "Resetting database (this will delete all data)..."
+    
+    if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+        log_info "Running database reset in container..."
+        docker exec ${CONTAINER_NAME} npx prisma migrate reset --force --skip-generate || {
+            log_error "Database reset failed!"
+            return 1
+        }
+        log_info "Database reset completed ✓"
+    else
+        log_error "Container not running!"
+        return 1
+    fi
+}
+
 wait_for_health() {
     log_info "Waiting for application to be healthy..."
     
@@ -174,6 +190,7 @@ main() {
     stop_current
     build_image
     run_container
+    reset_database
     
     if wait_for_health; then
         cleanup
@@ -191,6 +208,9 @@ main() {
 case "${1:-deploy}" in
     deploy)
         main
+        ;;
+    reset-db)
+        reset_database
         ;;
     rollback)
         rollback
@@ -211,7 +231,7 @@ case "${1:-deploy}" in
         show_status
         ;;
     *)
-        echo "Usage: $0 {deploy|rollback|logs|restart|stop|start|status}"
+        echo "Usage: $0 {deploy|reset-db|rollback|logs|restart|stop|start|status}"
         exit 1
         ;;
 esac
