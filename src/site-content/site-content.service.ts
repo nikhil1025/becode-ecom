@@ -48,6 +48,8 @@ export class SiteContentService {
       PRIVACY: 'privacy',
       ABOUT: 'about',
       FAQS: 'faqs',
+      SHIPPING: 'shipping-info',
+      RETURNS: 'returns-exchanges',
     };
     return slugMap[type] || type.toLowerCase();
   }

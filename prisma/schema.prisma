@@ -337,6 +337,8 @@ enum ContentType {
   PRIVACY
   ABOUT
   FAQS
+  SHIPPING
+  RETURNS
 }
 
 enum ContentStatus {
