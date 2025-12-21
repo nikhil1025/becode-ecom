@@ -83,6 +83,19 @@ build_image() {
     log_info "Image built successfully ✓"
 }
 
+run_migrations() {
+    log_info "Running database migrations safely..."
+    
+    # Source the safe migration script
+    export IMAGE_NAME IMAGE_TAG
+    bash ./prisma-migrate-safe.sh || {
+        log_error "Migration failed!"
+        return 1
+    }
+    
+    log_info "Migrations completed ✓"
+}
+
 run_container() {
     log_info "Starting new container..."
     
@@ -100,22 +113,6 @@ run_container() {
         }
     
     log_info "Container started ✓"
-}
-
-migrate_db() {
-    log_info "Running database migration..."
-    
-    # For this fresh start, reset and deploy
-    if docker run --rm \
-        --env-file .env \
-        --entrypoint sh \
-        ${IMAGE_NAME}:${IMAGE_TAG} \
-        -c "npx prisma generate && npx prisma migrate reset --force && npx prisma migrate deploy" ; then
-        log_info "Database migration completed ✓"
-    else
-        log_error "Database migration failed!"
-        return 1
-    fi
 }
 
 reset_database() {
@@ -206,7 +203,7 @@ main() {
     backup_current
     stop_current
     build_image
-    migrate_db
+    run_migrations
     run_container
     
     if wait_for_health; then
