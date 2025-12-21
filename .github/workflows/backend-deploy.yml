@@ -170,7 +170,7 @@ jobs:
             docker build \
               --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -t $IMAGE_NAME:latest .
-            
+
             echo "🧬 Running Prisma migrations..."
             docker run --rm \
               --env-file .env \
@@ -253,7 +253,7 @@ jobs:
             echo ""
             echo "🏥 Health check:"
             sleep 5
-            curl -f http://${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PORT }}/api/health || echo "⚠️ Health endpoint not responding"
+            curl -f http://localhost:${{ env.DEPLOY_PORT }}/api/health || echo "⚠️ Health endpoint not responding"
 
       # =================================
       # 10. Notify on Failure
