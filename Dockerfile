@@ -118,4 +118,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Start command - ONLY start the app, NO Prisma commands
 # Prisma migrations are handled during deploy step, NOT in container startup
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
