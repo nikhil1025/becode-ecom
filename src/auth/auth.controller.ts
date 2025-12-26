@@ -13,13 +13,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { User } from '@prisma/client';
 import express from 'express';
+import { FRONTEND_URL } from '../types/config';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 type UserWithoutPassword = Omit<User, 'password'>;
-
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://13.232.186.110:3000';
-// const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 @Controller('auth')
 export class AuthController {

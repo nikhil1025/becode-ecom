@@ -113,6 +113,50 @@ export class ReturnsService {
           );
         }
 
+        // Validate exchange product and variant if provided
+        if (String(type) === 'EXCHANGE' && item.exchangeProductId) {
+          if (!item.exchangeVariantId) {
+            throw new BadRequestException(
+              'Exchange variant is required for all exchanges',
+            );
+          }
+
+          const exchangeVariant = await tx.productVariant.findUnique({
+            where: { id: item.exchangeVariantId },
+            include: { product: true },
+          });
+
+          if (!exchangeVariant) {
+            throw new BadRequestException(
+              `Exchange variant ${item.exchangeVariantId} not found`,
+            );
+          }
+
+          if (exchangeVariant.productId !== item.exchangeProductId) {
+            throw new BadRequestException(
+              `Exchange variant ${item.exchangeVariantId} does not belong to product ${item.exchangeProductId}`,
+            );
+          }
+
+          if (exchangeVariant.product.status !== 'PUBLISHED') {
+            throw new BadRequestException(
+              `Exchange product ${exchangeVariant.product.name} is not available`,
+            );
+          }
+
+          if (!exchangeVariant.isActive) {
+            throw new BadRequestException(
+              `Exchange variant ${exchangeVariant.name} is not available`,
+            );
+          }
+
+          if (exchangeVariant.stockQuantity < item.quantity) {
+            throw new BadRequestException(
+              `Insufficient stock for exchange variant ${exchangeVariant.name}. Only ${exchangeVariant.stockQuantity} available`,
+            );
+          }
+        }
+
         // CRITICAL FIX: Check cumulative returned quantity to prevent over-returning
         const existingReturnItems = await tx.returnItem.findMany({
           where: {
@@ -166,6 +210,8 @@ export class ReturnsService {
             create: items.map((item) => ({
               orderItemId: item.orderItemId,
               quantity: item.quantity,
+              exchangeProductId: item.exchangeProductId,
+              exchangeVariantId: item.exchangeVariantId,
             })),
           },
         },
@@ -227,16 +273,17 @@ export class ReturnsService {
                     select: {
                       id: true,
                       name: true,
-                      images: {
-                        where: { isFeatured: true },
-                        take: 1,
-                      },
                     },
                   },
                   variant: {
                     select: {
                       id: true,
                       name: true,
+                      sku: true,
+                      images: {
+                        where: { isPrimary: true },
+                        take: 1,
+                      },
                     },
                   },
                 },
@@ -245,10 +292,6 @@ export class ReturnsService {
                 select: {
                   id: true,
                   name: true,
-                  images: {
-                    where: { isFeatured: true },
-                    take: 1,
-                  },
                 },
               },
             },
@@ -302,16 +345,17 @@ export class ReturnsService {
                       select: {
                         id: true,
                         name: true,
-                        images: {
-                          where: { isFeatured: true },
-                          take: 1,
-                        },
                       },
                     },
                     variant: {
                       select: {
                         id: true,
                         name: true,
+                        sku: true,
+                        images: {
+                          where: { isPrimary: true },
+                          take: 1,
+                        },
                       },
                     },
                   },
@@ -320,10 +364,6 @@ export class ReturnsService {
                   select: {
                     id: true,
                     name: true,
-                    images: {
-                      where: { isFeatured: true },
-                      take: 1,
-                    },
                   },
                 },
               },
@@ -378,13 +418,13 @@ export class ReturnsService {
                   select: {
                     id: true,
                     name: true,
-                    images: {
-                      where: { isFeatured: true },
-                      take: 1,
-                    },
                   },
                 },
-                variant: true,
+                variant: {
+                  include: {
+                    images: true,
+                  },
+                },
               },
             },
           },
@@ -447,6 +487,7 @@ export class ReturnsService {
         // CRITICAL FIX: Validate state transitions
         const validTransitions: Record<ReturnStatus, ReturnStatus[]> = {
           [ReturnStatus.REQUESTED]: [
+            ReturnStatus.PENDING,
             ReturnStatus.UNDER_REVIEW,
             ReturnStatus.REJECTED,
             ReturnStatus.CANCELLED,
@@ -503,18 +544,17 @@ export class ReturnsService {
               data: { status: 'RETURNED' as any },
             });
 
-            // Restore stock
-            if (item.orderItem.variantId) {
-              await tx.productVariant.update({
-                where: { id: item.orderItem.variantId },
-                data: { stockQuantity: { increment: item.quantity } },
-              });
-            } else {
-              await tx.product.update({
-                where: { id: item.orderItem.productId },
-                data: { stockQuantity: { increment: item.quantity } },
-              });
+            // Restore stock to variant ONLY
+            if (!item.orderItem.variantId) {
+              throw new InternalServerErrorException(
+                `Cannot restore stock for order item ${item.orderItemId}: variantId is missing`,
+              );
             }
+
+            await tx.productVariant.update({
+              where: { id: item.orderItem.variantId },
+              data: { stockQuantity: { increment: item.quantity } },
+            });
           }
         }
 

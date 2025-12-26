@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -25,6 +26,14 @@ export class CategoriesController {
   @Get()
   async findAll() {
     return this.categoriesService.findAll();
+  }
+
+  // Admin endpoint for searching categories (for CMS selection)
+  @Get('admin/search')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  async searchCategories(@Query('q') query?: string) {
+    return this.categoriesService.searchCategories(query);
   }
 
   @Get(':id')

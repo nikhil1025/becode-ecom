@@ -25,7 +25,7 @@ export class OrdersService {
         productId: string;
         quantity: number;
         price: number;
-        variantId?: string;
+        variantId: string; // REQUIRED - variant-first architecture
       }>;
       shippingAddress: any;
       billingAddress?: any;
@@ -47,6 +47,11 @@ export class OrdersService {
         if (!item.productId) {
           throw new BadRequestException('Product ID is required for all items');
         }
+        if (!item.variantId) {
+          throw new BadRequestException(
+            'Variant ID is required for all items - please select a variant',
+          );
+        }
         if (!item.quantity || item.quantity < 1) {
           throw new BadRequestException(
             'Valid quantity is required for all items',
@@ -62,40 +67,88 @@ export class OrdersService {
       const { items, shippingAddress, billingAddress } = data;
 
       return await this.prisma.$transaction(async (tx) => {
-        // 1. Validate stock and prepare updates
+        // 1. Validate stock and prepare updates with product snapshots
         const stockUpdates: Promise<any>[] = [];
+        const enrichedItems: any[] = [];
+
         for (const item of items) {
-          if (item.variantId) {
-            const variant = await tx.productVariant.findUnique({
-              where: { id: item.variantId },
-            });
-            if (!variant || variant.stockQuantity < item.quantity) {
-              throw new BadRequestException(
-                `Not enough stock for variant ${variant?.name || item.variantId}`,
-              );
-            }
-            stockUpdates.push(
-              tx.productVariant.update({
-                where: { id: item.variantId },
-                data: { stockQuantity: { decrement: item.quantity } },
-              }),
-            );
-          } else {
-            const product = await tx.product.findUnique({
-              where: { id: item.productId },
-            });
-            if (!product || product.stockQuantity < item.quantity) {
-              throw new BadRequestException(
-                `Not enough stock for product ${product?.name || item.productId}`,
-              );
-            }
-            stockUpdates.push(
-              tx.product.update({
-                where: { id: item.productId },
-                data: { stockQuantity: { decrement: item.quantity } },
-              }),
+          const product = await tx.product.findUnique({
+            where: { id: item.productId },
+          });
+
+          if (!product) {
+            throw new BadRequestException(
+              `Product ${item.productId} not found`,
             );
           }
+
+          // Validate variant (MANDATORY)
+          if (!item.variantId) {
+            throw new BadRequestException(
+              `Variant ID is required for product ${product.name}`,
+            );
+          }
+
+          const variant = await tx.productVariant.findUnique({
+            where: { id: item.variantId },
+            include: {
+              images: {
+                where: { isPrimary: true },
+                take: 1,
+              },
+            },
+          });
+
+          if (!variant) {
+            throw new BadRequestException(
+              `Variant ${item.variantId} not found`,
+            );
+          }
+
+          if (variant.productId !== product.id) {
+            throw new BadRequestException(
+              `Variant does not belong to product ${product.name}`,
+            );
+          }
+
+          if (variant.stockQuantity < item.quantity) {
+            throw new BadRequestException(
+              `Not enough stock for ${product.name} - ${variant.name}`,
+            );
+          }
+
+          if (!variant.isActive) {
+            throw new BadRequestException(
+              `Variant ${variant.name} is no longer available`,
+            );
+          }
+
+          // Create comprehensive snapshot with variant details
+          const variantSnapshot = {
+            productId: product.id,
+            productName: product.name,
+            productSku: product.sku,
+            variantId: variant.id,
+            variantSku: variant.sku,
+            variantName: variant.name,
+            attributes: variant.attributes,
+            price: item.price,
+            imageUrl: variant.images[0]?.url || null,
+          };
+
+          // Update variant stock
+          stockUpdates.push(
+            tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stockQuantity: { decrement: item.quantity } },
+            }),
+          );
+
+          // Prepare enriched item
+          enrichedItems.push({
+            ...item,
+            productSnapshot: variantSnapshot,
+          });
         }
 
         // 2. Execute stock updates
@@ -123,28 +176,28 @@ export class OrdersService {
             shippingAddress: shippingAddress || {},
             billingAddress: billingAddress || shippingAddress || {},
             items: {
-              create: items.map((item) => ({
+              create: enrichedItems.map((item) => ({
                 productId: item.productId,
                 variantId: item.variantId,
                 quantity: item.quantity,
                 price: item.price,
                 status: OrderItemStatus.PLACED,
-                productSnapshot: {
-                  name: '', // Will be filled from product
-                  price: item.price,
-                },
+                productSnapshot: item.productSnapshot,
               })),
             },
           },
           include: {
             items: {
               include: {
-                product: {
+                product: true,
+                variant: {
                   include: {
-                    images: true,
+                    images: {
+                      where: { isPrimary: true },
+                      take: 1,
+                    },
                   },
                 },
-                variant: true,
               },
             },
           },
@@ -208,7 +261,12 @@ export class OrdersService {
       }
 
       // Check tracking status - cancellation only allowed before shipped
-      const allowedTrackingStatuses = ['ORDER_PLACED', 'CONFIRMED', 'PACKED'];
+      const allowedTrackingStatuses = [
+        'ORDER_PLACED',
+        'CONFIRMED',
+        'PROCESSING',
+        'PACKED',
+      ];
       if (!allowedTrackingStatuses.includes(order.trackingStatus)) {
         throw new BadRequestException(
           `Order cannot be cancelled as it is already ${order.trackingStatus}. Cancellation is only allowed before shipment.`,
@@ -265,18 +323,17 @@ export class OrdersService {
             },
           });
 
-          // Restore stock
-          if (orderItem.variantId) {
-            await tx.productVariant.update({
-              where: { id: orderItem.variantId },
-              data: { stockQuantity: { increment: orderItem.quantity } },
-            });
-          } else {
-            await tx.product.update({
-              where: { id: orderItem.productId },
-              data: { stockQuantity: { increment: orderItem.quantity } },
-            });
+          // Restore stock - VARIANT ONLY
+          if (!orderItem.variantId) {
+            throw new InternalServerErrorException(
+              `Order item ${orderItem.id} has no variant - invalid state`,
+            );
           }
+
+          await tx.productVariant.update({
+            where: { id: orderItem.variantId },
+            data: { stockQuantity: { increment: orderItem.quantity } },
+          });
 
           // Add to total refund amount
           totalRefundAmount += orderItem.price * orderItem.quantity;
@@ -361,12 +418,15 @@ export class OrdersService {
         include: {
           items: {
             include: {
-              product: {
+              product: true,
+              variant: {
                 include: {
-                  images: true,
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
                 },
               },
-              variant: true,
             },
           },
         },
@@ -401,12 +461,15 @@ export class OrdersService {
         include: {
           items: {
             include: {
-              product: {
+              product: true,
+              variant: {
                 include: {
-                  images: true,
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
                 },
               },
-              variant: true,
             },
           },
         },
@@ -456,9 +519,13 @@ export class OrdersService {
           include: {
             items: {
               include: {
-                product: {
+                product: true,
+                variant: {
                   include: {
-                    images: true,
+                    images: {
+                      where: { isPrimary: true },
+                      take: 1,
+                    },
                   },
                 },
               },
@@ -666,8 +733,14 @@ export class OrdersService {
                   select: {
                     id: true,
                     name: true,
+                  },
+                },
+                variant: {
+                  select: {
+                    id: true,
+                    name: true,
                     images: {
-                      where: { isFeatured: true },
+                      where: { isPrimary: true },
                       take: 1,
                     },
                   },
@@ -747,12 +820,15 @@ export class OrdersService {
           deliveryAgent: true,
           items: {
             include: {
-              product: {
+              product: true,
+              variant: {
                 include: {
-                  images: true,
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
                 },
               },
-              variant: true,
             },
           },
         },

@@ -31,7 +31,7 @@ export class OrdersController {
         productId: string;
         quantity: number;
         price: number;
-        variantId?: string;
+        variantId: string; // REQUIRED - variant-first architecture
       }>;
       shippingAddress: any;
       billingAddress?: any;
@@ -52,8 +52,6 @@ export class OrdersController {
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
   async getAllOrders(@Query('page') page = '1', @Query('limit') limit = '20') {
-    console.log('process.env.JWT_SECRET', process.env.JWT_SECRET);
-
     return this.ordersService.getAllOrders(Number(page), Number(limit));
   }
 

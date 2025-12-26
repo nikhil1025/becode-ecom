@@ -94,19 +94,30 @@ export class HomeService {
             id: true,
             name: true,
             slug: true,
-            regularPrice: true,
-            salePrice: true,
-            stockQuantity: true,
             averageRating: true,
             reviewCount: true,
             status: true,
-            images: {
-              where: { isFeatured: true },
-              take: 1,
-              select: { url: true, altText: true },
-            },
             category: { select: { id: true, name: true, slug: true } },
             brand: { select: { id: true, name: true, slug: true } },
+            variants: {
+              where: { isActive: true },
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                price: true,
+                salePrice: true,
+                stockQuantity: true,
+                attributes: true,
+                images: {
+                  where: { isPrimary: true },
+                  take: 1,
+                  select: { url: true, altText: true },
+                },
+              },
+              orderBy: { createdAt: 'asc' },
+              take: 1,
+            },
           },
         },
       },
@@ -115,28 +126,40 @@ export class HomeService {
     });
 
     return featured
-      .filter((f) => f.product && f.product.status === 'PUBLISHED')
-      .map((f) => ({
-        id: f.product.id,
-        name: f.product.name,
-        slug: f.product.slug,
-        price: f.product.regularPrice,
-        salePrice: f.product.salePrice,
-        discount: f.product.salePrice
-          ? Math.round(
-              ((f.product.regularPrice - f.product.salePrice) /
-                f.product.regularPrice) *
-                100,
-            )
-          : 0,
-        thumbnail: f.product.images[0]?.url || null,
-        thumbnailAlt: f.product.images[0]?.altText || f.product.name,
-        stock: f.product.stockQuantity,
-        averageRating: f.product.averageRating,
-        reviewCount: f.product.reviewCount,
-        category: f.product.category,
-        brand: f.product.brand,
-      }));
+      .filter(
+        (f) =>
+          f.product &&
+          f.product.status === 'PUBLISHED' &&
+          f.product.variants.length > 0,
+      )
+      .map((f) => {
+        const variant = f.product.variants[0];
+        const priceRange = { min: variant.price, max: variant.price };
+
+        return {
+          // Product-level info
+          productId: f.product.id,
+          productName: f.product.name,
+          productSlug: f.product.slug,
+          averageRating: f.product.averageRating,
+          reviewCount: f.product.reviewCount,
+          category: f.product.category,
+          brand: f.product.brand,
+
+          // Variant-specific info (featured variant)
+          variantId: variant.id,
+          variantName: variant.name,
+          variantSku: variant.sku,
+          attributes: variant.attributes,
+          price: variant.price,
+          salePrice: variant.salePrice,
+          priceRange,
+          thumbnail: variant.images[0]?.url || null,
+          thumbnailAlt: variant.images[0]?.altText || f.product.name,
+          stock: variant.stockQuantity,
+          variantCount: 1, // We only fetched one variant for homepage
+        };
+      });
   }
 
   private async getPopularProducts() {
@@ -148,19 +171,30 @@ export class HomeService {
             id: true,
             name: true,
             slug: true,
-            regularPrice: true,
-            salePrice: true,
-            stockQuantity: true,
             averageRating: true,
             reviewCount: true,
             status: true,
-            images: {
-              where: { isFeatured: true },
-              take: 1,
-              select: { url: true, altText: true },
-            },
             category: { select: { id: true, name: true, slug: true } },
             brand: { select: { id: true, name: true, slug: true } },
+            variants: {
+              where: { isActive: true },
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                price: true,
+                salePrice: true,
+                stockQuantity: true,
+                attributes: true,
+                images: {
+                  where: { isPrimary: true },
+                  take: 1,
+                  select: { url: true, altText: true },
+                },
+              },
+              orderBy: { createdAt: 'asc' },
+              take: 1,
+            },
           },
         },
       },
@@ -169,28 +203,40 @@ export class HomeService {
     });
 
     return popular
-      .filter((p) => p.product && p.product.status === 'PUBLISHED')
-      .map((p) => ({
-        id: p.product.id,
-        name: p.product.name,
-        slug: p.product.slug,
-        price: p.product.regularPrice,
-        salePrice: p.product.salePrice,
-        discount: p.product.salePrice
-          ? Math.round(
-              ((p.product.regularPrice - p.product.salePrice) /
-                p.product.regularPrice) *
-                100,
-            )
-          : 0,
-        thumbnail: p.product.images[0]?.url || null,
-        thumbnailAlt: p.product.images[0]?.altText || p.product.name,
-        stock: p.product.stockQuantity,
-        averageRating: p.product.averageRating,
-        reviewCount: p.product.reviewCount,
-        category: p.product.category,
-        brand: p.product.brand,
-      }));
+      .filter(
+        (p) =>
+          p.product &&
+          p.product.status === 'PUBLISHED' &&
+          p.product.variants.length > 0,
+      )
+      .map((p) => {
+        const variant = p.product.variants[0];
+        const priceRange = { min: variant.price, max: variant.price };
+
+        return {
+          // Product-level info
+          productId: p.product.id,
+          productName: p.product.name,
+          productSlug: p.product.slug,
+          averageRating: p.product.averageRating,
+          reviewCount: p.product.reviewCount,
+          category: p.product.category,
+          brand: p.product.brand,
+
+          // Variant-specific info (popular variant)
+          variantId: variant.id,
+          variantName: variant.name,
+          variantSku: variant.sku,
+          attributes: variant.attributes,
+          price: variant.price,
+          salePrice: variant.salePrice,
+          priceRange,
+          thumbnail: variant.images[0]?.url || null,
+          thumbnailAlt: variant.images[0]?.altText || p.product.name,
+          stock: variant.stockQuantity,
+          variantCount: 1,
+        };
+      });
   }
 
   private async getFeaturedCategories() {

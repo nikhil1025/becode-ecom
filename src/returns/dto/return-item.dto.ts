@@ -1,5 +1,4 @@
-
-import { IsInt, IsNotEmpty, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class ReturnItemDto {
   @IsString()
@@ -9,4 +8,12 @@ export class ReturnItemDto {
   @IsInt()
   @Min(1)
   quantity: number;
+
+  @IsString()
+  @IsOptional()
+  exchangeProductId?: string;
+
+  @IsString()
+  @IsOptional()
+  exchangeVariantId?: string;
 }

@@ -18,18 +18,21 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { imageFileFilter } from '../common/utils/file-filters';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+import { PublicVariantDto } from './dto/variant.dto';
 import { ProductsService } from './products.service';
+import { VariantsService } from './variants.service';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private productsService: ProductsService) {}
+  constructor(
+    private productsService: ProductsService,
+    private variantsService: VariantsService,
+  ) {}
 
   // Public endpoint for users/guests - limited data
   @Get()
   async findAll(
     @Query('category') category?: string,
-    @Query('minPrice') minPrice?: string,
-    @Query('maxPrice') maxPrice?: string,
     @Query('search') search?: string,
     @Query('featured') featured?: string,
     @Query('page') page?: string,
@@ -37,8 +40,6 @@ export class ProductsController {
   ) {
     return this.productsService.findAll({
       category,
-      minPrice: minPrice ? parseFloat(minPrice) : undefined,
-      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
       search,
       featured: featured === 'true',
       page: page ? parseInt(page) : 1,
@@ -50,6 +51,15 @@ export class ProductsController {
   @Get('slug/:slug')
   async findBySlug(@Param('slug') slug: string): Promise<any> {
     return this.productsService.findBySlug(slug);
+  }
+
+  // Public endpoint to get variants for a product by slug
+  @Get('slug/:slug/variants')
+  async getVariantsBySlug(
+    @Param('slug') slug: string,
+  ): Promise<PublicVariantDto[]> {
+    const product = await this.productsService.findBySlug(slug);
+    return this.variantsService.getPublicVariantsByProduct(product.id);
   }
 
   // Admin endpoint for full product data with pagination
@@ -70,6 +80,23 @@ export class ProductsController {
     });
   }
 
+  // Admin endpoint for searching products (for CMS selection)
+  @Get('admin/search')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  async searchProducts(@Query('q') query?: string) {
+    return this.productsService.searchProducts(query);
+  }
+
+  // Admin endpoint for product preview (includes inactive variants)
+  @Get('admin/preview/:id')
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
+  @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  async previewProduct(@Param('id') id: string): Promise<any> {
+    // Admin preview includes ALL variants (active + inactive)
+    return this.productsService.findOneForAdmin(id);
+  }
+
   // Public endpoint for single product by ID (legacy)
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<any> {
@@ -79,39 +106,25 @@ export class ProductsController {
   @Post()
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(
-    FilesInterceptor('images', 10, { fileFilter: imageFileFilter }),
-  )
-  async create(
-    @Body() data: CreateProductDto,
-    @UploadedFiles() images?: Express.Multer.File[],
-  ): Promise<any> {
-    const imageUrls =
-      images && images.length > 0
-        ? await this.productsService.uploadProductImages(images)
-        : [];
-    return this.productsService.create({ ...data, images: imageUrls });
+  async create(@Body() data: CreateProductDto): Promise<any> {
+    // Images are now managed at variant level only
+    return this.productsService.create(data);
   }
 
   @Put(':id')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
-  @UseInterceptors(
-    FilesInterceptor('images', 10, { fileFilter: imageFileFilter }),
-  )
   async update(
     @Param('id') id: string,
     @Body() data: UpdateProductDto,
-    @UploadedFiles() images?: Express.Multer.File[],
   ): Promise<any> {
-    const imageUrls =
-      images && images.length > 0
-        ? await this.productsService.uploadProductImages(images)
-        : undefined;
-    return this.productsService.update(id, {
-      ...data,
-      ...(imageUrls && imageUrls.length > 0 && { images: imageUrls }),
-    });
+    // If status is being set to PUBLISHED, validate variants
+    if (data.status === 'PUBLISHED') {
+      await this.productsService.validateProductForPublishing(id);
+    }
+
+    // Images are now managed at variant level only
+    return this.productsService.update(id, data);
   }
 
   @Delete(':id')

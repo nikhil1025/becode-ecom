@@ -22,12 +22,19 @@ export class WishlistService {
         include: {
           product: {
             include: {
-              images: {
-                where: { isFeatured: true },
-                take: 1,
-              },
               category: true,
               brand: true,
+              variants: {
+                where: { isActive: true },
+                take: 1,
+                include: {
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
+                },
+                orderBy: { createdAt: 'asc' },
+              },
             },
           },
         },
@@ -85,9 +92,15 @@ export class WishlistService {
         include: {
           product: {
             include: {
-              images: {
-                where: { isFeatured: true },
+              variants: {
+                where: { isActive: true },
                 take: 1,
+                include: {
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
+                },
               },
             },
           },

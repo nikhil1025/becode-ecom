@@ -5,8 +5,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
 import { FileUploadService } from '../common/services/file-upload.service';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class BrandsService {
@@ -44,9 +44,14 @@ export class BrandsService {
           products: {
             take: 10,
             include: {
-              images: {
-                where: { isFeatured: true },
+              variants: {
                 take: 1,
+                include: {
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
+                },
               },
             },
           },
@@ -193,11 +198,10 @@ export class BrandsService {
 
   async uploadLogo(file: Express.Multer.File): Promise<string> {
     try {
-      const { url } = await this.fileUploadService.uploadImage(
-        file,
-        'brands',
-        { width: 300, height: 300 },
-      );
+      const { url } = await this.fileUploadService.uploadImage(file, 'brands', {
+        width: 300,
+        height: 300,
+      });
       return url;
     } catch (error) {
       throw new InternalServerErrorException(

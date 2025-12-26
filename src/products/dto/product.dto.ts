@@ -66,18 +66,8 @@ export class CreateProductDto {
   @IsString()
   sku: string;
 
-  @IsNumber()
-  @Min(0)
-  regularPrice: number;
-
-  @IsNumber()
-  @Min(0)
-  @IsOptional()
-  salePrice?: number;
-
-  @IsNumber()
-  @Min(0)
-  stock: number;
+  // VARIANT-FIRST: Price and stock removed from Product level
+  // These fields now belong to ProductVariant only
 
   @IsString()
   @IsOptional()
@@ -99,11 +89,8 @@ export class CreateProductDto {
   @IsOptional()
   status?: ProductStatus;
 
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ProductImageDto)
-  @IsOptional()
-  images?: ProductImageDto[];
+  // VARIANT-FIRST: Images removed from Product level
+  // Images now belong to ProductVariant only
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -141,20 +128,8 @@ export class UpdateProductDto {
   @IsOptional()
   sku?: string;
 
-  @IsNumber()
-  @Min(0)
-  @IsOptional()
-  regularPrice?: number;
-
-  @IsNumber()
-  @Min(0)
-  @IsOptional()
-  salePrice?: number;
-
-  @IsNumber()
-  @Min(0)
-  @IsOptional()
-  stock?: number;
+  // VARIANT-FIRST: Price and stock removed from Product level
+  // These fields now belong to ProductVariant only
 
   @IsString()
   @IsOptional()
@@ -176,11 +151,8 @@ export class UpdateProductDto {
   @IsOptional()
   status?: ProductStatus;
 
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ProductImageDto)
-  @IsOptional()
-  images?: ProductImageDto[];
+  // VARIANT-FIRST: Images removed from Product level
+  // Images now belong to ProductVariant only
 
   @IsArray()
   @ValidateNested({ each: true })

@@ -1,57 +1,3 @@
--- Drop the entire public schema and recreate it
-DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
-
--- Grant permissions
-GRANT ALL ON SCHEMA public TO postgres;
-GRANT ALL ON SCHEMA public TO public;
-
--- Drop existing types if they exist
-DROP TYPE IF EXISTS "UserRole" CASCADE;
-DROP TYPE IF EXISTS "OrderStatus" CASCADE;
-DROP TYPE IF EXISTS "PaymentStatus" CASCADE;
-DROP TYPE IF EXISTS "OrderItemStatus" CASCADE;
-DROP TYPE IF EXISTS "ProductStatus" CASCADE;
-DROP TYPE IF EXISTS "ReviewStatus" CASCADE;
-DROP TYPE IF EXISTS "ContentType" CASCADE;
-DROP TYPE IF EXISTS "ContentStatus" CASCADE;
-DROP TYPE IF EXISTS "ReturnType" CASCADE;
-DROP TYPE IF EXISTS "ReturnStatus" CASCADE;
-DROP TYPE IF EXISTS "TrackingStatus" CASCADE;
-DROP TYPE IF EXISTS "NavigationType" CASCADE;
-DROP TYPE IF EXISTS "TransactionType" CASCADE;
-DROP TYPE IF EXISTS "RefundMethod" CASCADE;
-
--- Drop existing tables if they exist
-DROP TABLE IF EXISTS "users" CASCADE;
-DROP TABLE IF EXISTS "categories" CASCADE;
-DROP TABLE IF EXISTS "products" CASCADE;
-DROP TABLE IF EXISTS "product_images" CASCADE;
-DROP TABLE IF EXISTS "product_variants" CASCADE;
-DROP TABLE IF EXISTS "reviews" CASCADE;
-DROP TABLE IF EXISTS "orders" CASCADE;
-DROP TABLE IF EXISTS "order_items" CASCADE;
-DROP TABLE IF EXISTS "payments" CASCADE;
-DROP TABLE IF EXISTS "addresses" CASCADE;
-DROP TABLE IF EXISTS "carts" CASCADE;
-DROP TABLE IF EXISTS "cart_items" CASCADE;
-DROP TABLE IF EXISTS "wishlists" CASCADE;
-DROP TABLE IF EXISTS "wishlist_items" CASCADE;
-DROP TABLE IF EXISTS "returns" CASCADE;
-DROP TABLE IF EXISTS "return_items" CASCADE;
-DROP TABLE IF EXISTS "refunds" CASCADE;
-DROP TABLE IF EXISTS "wallets" CASCADE;
-DROP TABLE IF EXISTS "transactions" CASCADE;
-DROP TABLE IF EXISTS "site_contents" CASCADE;
-DROP TABLE IF EXISTS "navigation" CASCADE;
-DROP TABLE IF EXISTS "featured_categories" CASCADE;
-DROP TABLE IF EXISTS "featured_products" CASCADE;
-DROP TABLE IF EXISTS "popular_products" CASCADE;
-DROP TABLE IF EXISTS "newsletters" CASCADE;
-DROP TABLE IF EXISTS "contacts" CASCADE;
-DROP TABLE IF EXISTS "audit_logs" CASCADE;
-DROP TABLE IF EXISTS "brands" CASCADE;
-
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('CUSTOMER', 'ADMIN', 'SUPERADMIN');
 
@@ -150,11 +96,6 @@ CREATE TABLE "products" (
     "longDescription" TEXT,
     "categoryId" TEXT NOT NULL,
     "brandId" TEXT,
-    "regularPrice" DOUBLE PRECISION NOT NULL,
-    "salePrice" DOUBLE PRECISION,
-    "costPrice" DOUBLE PRECISION,
-    "stockQuantity" INTEGER NOT NULL DEFAULT 0,
-    "lowStockThreshold" INTEGER NOT NULL DEFAULT 10,
     "weight" DOUBLE PRECISION,
     "dimensions" JSONB,
     "status" "ProductStatus" NOT NULL DEFAULT 'DRAFT',
@@ -175,11 +116,11 @@ CREATE TABLE "products" (
 -- CreateTable
 CREATE TABLE "product_images" (
     "id" TEXT NOT NULL,
-    "productId" TEXT NOT NULL,
+    "variantId" TEXT NOT NULL,
     "url" TEXT NOT NULL,
     "altText" TEXT,
     "position" INTEGER NOT NULL DEFAULT 0,
-    "isFeatured" BOOLEAN NOT NULL DEFAULT false,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "product_images_pkey" PRIMARY KEY ("id")
@@ -192,8 +133,13 @@ CREATE TABLE "product_variants" (
     "sku" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "price" DOUBLE PRECISION NOT NULL,
+    "salePrice" DOUBLE PRECISION,
+    "costPrice" DOUBLE PRECISION,
     "stockQuantity" INTEGER NOT NULL DEFAULT 0,
+    "lowStockThreshold" INTEGER NOT NULL DEFAULT 10,
     "attributes" JSONB NOT NULL,
+    "weight" DOUBLE PRECISION,
+    "dimensions" JSONB,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -243,7 +189,7 @@ CREATE TABLE "order_items" (
     "id" TEXT NOT NULL,
     "orderId" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
-    "variantId" TEXT,
+    "variantId" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
     "price" DOUBLE PRECISION NOT NULL,
     "productSnapshot" JSONB NOT NULL,
@@ -310,7 +256,7 @@ CREATE TABLE "cart_items" (
     "id" TEXT NOT NULL,
     "cartId" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
-    "variantId" TEXT,
+    "variantId" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL DEFAULT 1,
     "price" DOUBLE PRECISION NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -557,16 +503,43 @@ CREATE UNIQUE INDEX "products_sku_key" ON "products"("sku");
 CREATE INDEX "products_isDeleted_idx" ON "products"("isDeleted");
 
 -- CreateIndex
+CREATE INDEX "product_images_variantId_idx" ON "product_images"("variantId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "product_variants_sku_key" ON "product_variants"("sku");
 
 -- CreateIndex
+CREATE INDEX "product_variants_productId_idx" ON "product_variants"("productId");
+
+-- CreateIndex
+CREATE INDEX "product_variants_isActive_idx" ON "product_variants"("isActive");
+
+-- CreateIndex
+CREATE INDEX "product_variants_stockQuantity_idx" ON "product_variants"("stockQuantity");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "orders_orderNumber_key" ON "orders"("orderNumber");
+
+-- CreateIndex
+CREATE INDEX "order_items_orderId_idx" ON "order_items"("orderId");
+
+-- CreateIndex
+CREATE INDEX "order_items_variantId_idx" ON "order_items"("variantId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "carts_userId_key" ON "carts"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "carts_sessionId_key" ON "carts"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "cart_items_cartId_idx" ON "cart_items"("cartId");
+
+-- CreateIndex
+CREATE INDEX "cart_items_variantId_idx" ON "cart_items"("variantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "cart_items_cartId_variantId_key" ON "cart_items"("cartId", "variantId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "wishlist_items_userId_productId_key" ON "wishlist_items"("userId", "productId");
@@ -665,7 +638,7 @@ ALTER TABLE "products" ADD CONSTRAINT "products_categoryId_fkey" FOREIGN KEY ("c
 ALTER TABLE "products" ADD CONSTRAINT "products_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "brands"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "product_images" ADD CONSTRAINT "product_images_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "product_images" ADD CONSTRAINT "product_images_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "product_variants" ADD CONSTRAINT "product_variants_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -683,7 +656,7 @@ ALTER TABLE "order_items" ADD CONSTRAINT "order_items_orderId_fkey" FOREIGN KEY 
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "order_items" ADD CONSTRAINT "order_items_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "order_items" ADD CONSTRAINT "order_items_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -704,7 +677,7 @@ ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_cartId_fkey" FOREIGN KEY ("c
 ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "wishlist_items" ADD CONSTRAINT "wishlist_items_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

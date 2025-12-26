@@ -1,12 +1,26 @@
 import { Module } from '@nestjs/common';
 import { CommonModule } from '../common/common.module';
 import { PrismaService } from '../prisma.service';
+import { AdminVariantsController } from './admin-variants.controller';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
+import { VariantsListingController } from './variants-listing.controller';
+import { VariantsListingService } from './variants-listing.service';
+import { VariantsService } from './variants.service';
 
 @Module({
   imports: [CommonModule],
-  providers: [ProductsService, PrismaService],
-  controllers: [ProductsController],
+  providers: [
+    ProductsService,
+    VariantsService,
+    VariantsListingService,
+    PrismaService,
+  ],
+  controllers: [
+    ProductsController,
+    AdminVariantsController,
+    VariantsListingController,
+  ],
+  exports: [VariantsService, VariantsListingService],
 })
 export class ProductsModule {}

@@ -16,7 +16,7 @@ export class PaymentsController {
 
   @Post('razorpay/verify')
   @UseGuards(JwtAuthGuard)
-  async verifyPayment(
+  verifyPayment(
     @Body()
     body: {
       razorpay_order_id: string;

@@ -4,9 +4,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
 import { FileUploadService } from '../common/services/file-upload.service';
-import { stat } from 'fs';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class ProductsService {
@@ -17,44 +16,19 @@ export class ProductsService {
 
   async findAll(filters?: {
     category?: string;
-    minPrice?: number;
-    maxPrice?: number;
     search?: string;
     featured?: boolean;
     page?: number;
     limit?: number;
   }): Promise<any> {
     try {
-      // Validate price filters
-      if (filters?.minPrice && filters.minPrice < 0) {
-        throw new BadRequestException('Minimum price cannot be negative');
-      }
-      if (filters?.maxPrice && filters.maxPrice < 0) {
-        throw new BadRequestException('Maximum price cannot be negative');
-      }
-      if (
-        filters?.minPrice &&
-        filters?.maxPrice &&
-        filters.minPrice > filters.maxPrice
-      ) {
-        throw new BadRequestException(
-          'Minimum price cannot exceed maximum price',
-        );
-      }
-
       const where: any = {
         status: 'PUBLISHED',
-        isDeleted: false, // Exclude deleted products from user view
+        isDeleted: false,
       };
 
       if (filters?.category) {
         where.category = { slug: filters.category };
-      }
-
-      if (filters?.minPrice || filters?.maxPrice) {
-        where.regularPrice = {};
-        if (filters.minPrice) where.regularPrice.gte = filters.minPrice;
-        if (filters.maxPrice) where.regularPrice.lte = filters.maxPrice;
       }
 
       if (filters?.search) {
@@ -81,9 +55,6 @@ export class ProductsService {
             id: true,
             name: true,
             slug: true,
-            regularPrice: true,
-            salePrice: true,
-            stockQuantity: true,
             averageRating: true,
             reviewCount: true,
             isFeatured: true,
@@ -91,11 +62,13 @@ export class ProductsService {
             shortDescription: true,
             sku: true,
             status: true,
-            images: {
+            _count: {
               select: {
-                id: true,
-                url: true,
-                altText: true,
+                variants: {
+                  where: {
+                    isActive: true,
+                  },
+                },
               },
             },
             category: {
@@ -120,34 +93,22 @@ export class ProductsService {
         this.prisma.product.count({ where }),
       ]);
 
-      // Transform to match expected structure with thumbnail
+      // Transform to match expected structure
       const transformedProducts = products.map((product) => ({
         id: product.id,
         name: product.name,
         slug: product.slug,
-        price: product.regularPrice,
-        salePrice: product.salePrice,
-        discount: product.salePrice
-          ? Math.round(
-              ((product.regularPrice - product.salePrice) /
-                product.regularPrice) *
-                100,
-            )
-          : 0,
-        thumbnail: product.images[0]?.url || null,
-        thumbnailAlt: product.images[0]?.altText || product.name,
-        stockQuantity: product.stockQuantity,
         averageRating: product.averageRating,
         reviewCount: product.reviewCount,
         isFeatured: product.isFeatured,
         category: product.category,
         brand: product.brand,
-        images: product.images,
-        regularPrice: product.regularPrice,
         shortDescription: product.shortDescription,
         longDescription: product.longDescription,
         sku: product.sku,
         status: product.status,
+        variantCount: product._count.variants,
+        hasVariants: product._count.variants > 0,
       }));
 
       return {
@@ -178,13 +139,21 @@ export class ProductsService {
       const product = await this.prisma.product.findUnique({
         where: {
           id,
-          isDeleted: false, // Exclude deleted products from user view
+          isDeleted: false,
         },
         include: {
-          images: true,
           category: true,
           brand: true,
-          variants: true,
+          variants: {
+            where: {
+              isActive: true,
+            },
+            include: {
+              images: {
+                orderBy: { position: 'asc' },
+              },
+            },
+          },
           reviews: {
             where: { status: 'APPROVED' },
             include: { user: { select: { firstName: true, lastName: true } } },
@@ -210,6 +179,53 @@ export class ProductsService {
     }
   }
 
+  async findOneForAdmin(id: string): Promise<any> {
+    try {
+      if (!id) {
+        throw new BadRequestException('Product ID is required');
+      }
+
+      const product = await this.prisma.product.findUnique({
+        where: {
+          id,
+          isDeleted: false,
+        },
+        include: {
+          category: true,
+          brand: true,
+          variants: {
+            // Admin sees ALL variants (active + inactive)
+            include: {
+              images: {
+                orderBy: { position: 'asc' },
+              },
+            },
+          },
+          reviews: {
+            // Admin sees ALL reviews (pending, approved, rejected)
+            include: { user: { select: { firstName: true, lastName: true } } },
+          },
+        },
+      });
+
+      if (!product) {
+        throw new NotFoundException(`Product with ID ${id} not found`);
+      }
+
+      return product;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to retrieve product for admin: ' + error.message,
+      );
+    }
+  }
+
   async create(data: any): Promise<any> {
     try {
       if (!data) {
@@ -218,25 +234,16 @@ export class ProductsService {
       if (!data.name) {
         throw new BadRequestException('Product name is required');
       }
-      if (!data.regularPrice || data.regularPrice < 0) {
-        throw new BadRequestException('Valid regular price is required');
+      if (!data.categoryId) {
+        throw new BadRequestException('Product category is required');
       }
 
       // Map DTO fields to Prisma schema fields
-      const {
-        description,
-        stock,
-        isNewArrival,
-        images,
-        variants,
-        specifications,
-        tags,
-        ...rest
-      } = data;
+      const { description, images, variants, specifications, tags, ...rest } =
+        data;
       const prismaData: any = {
         ...rest,
         longDescription: description,
-        stockQuantity: stock || 0,
       };
 
       // Remove undefined fields
@@ -246,12 +253,17 @@ export class ProductsService {
         }
       });
 
+      // Ensure categoryId is properly set
+      if (!prismaData.categoryId) {
+        throw new BadRequestException('Category ID is required');
+      }
+
       return this.prisma.product.create({
         data: prismaData,
         include: {
-          images: true,
           category: true,
           brand: true,
+          variants: true,
         },
       });
     } catch (error) {
@@ -272,9 +284,6 @@ export class ProductsService {
       if (!data || Object.keys(data).length === 0) {
         throw new BadRequestException('Update data is required');
       }
-      if (data.regularPrice && data.regularPrice < 0) {
-        throw new BadRequestException('Regular price cannot be negative');
-      }
 
       const existingProduct = await this.prisma.product.findUnique({
         where: { id },
@@ -284,21 +293,28 @@ export class ProductsService {
         throw new NotFoundException(`Product with ID ${id} not found`);
       }
 
+      // CRITICAL: Enforce variant requirement when publishing
+      if (data.status === 'PUBLISHED') {
+        const variantCount = await this.prisma.productVariant.count({
+          where: {
+            productId: id,
+            isActive: true,
+          },
+        });
+
+        if (variantCount === 0) {
+          throw new BadRequestException(
+            'Cannot publish product without at least one active variant. Please create variants first.',
+          );
+        }
+      }
+
       // Map DTO fields to Prisma schema fields
-      const {
-        description,
-        stock,
-        isNewArrival,
-        images,
-        variants,
-        specifications,
-        tags,
-        ...rest
-      } = data;
+      const { description, images, variants, specifications, tags, ...rest } =
+        data;
       const prismaData: any = { ...rest };
 
       if (description !== undefined) prismaData.longDescription = description;
-      if (stock !== undefined) prismaData.stockQuantity = stock;
 
       // Remove undefined fields
       Object.keys(prismaData).forEach((key) => {
@@ -311,9 +327,9 @@ export class ProductsService {
         where: { id },
         data: prismaData,
         include: {
-          images: true,
           category: true,
           brand: true,
+          variants: true,
         },
       });
     } catch (error) {
@@ -437,22 +453,11 @@ export class ProductsService {
       const resizeOptions = { width: 800, height: 800 };
       const pathPrefix = `products/${productId}`;
 
-      const uploadedImagesData =
-        await this.fileUploadService.uploadMultipleImages(
-          files,
-          pathPrefix,
-          resizeOptions,
-        );
-
-      const createdImages = await this.prisma.productImage.createMany({
-        data: uploadedImagesData.map((img) => ({
-          productId,
-          url: img.url,
-          altText: product.name,
-        })),
-      });
-
-      return createdImages;
+      // Images are now managed at variant level, not product level
+      // This endpoint is deprecated - use variant image upload instead
+      throw new BadRequestException(
+        'Product images are managed at the variant level. Please use the variant image upload endpoint.',
+      );
     } catch (error) {
       if (
         error instanceof BadRequestException ||
@@ -504,23 +509,32 @@ export class ProductsService {
           slug: true,
           shortDescription: true,
           longDescription: true,
-          regularPrice: true,
-          salePrice: true,
-          stockQuantity: true,
           sku: true,
           averageRating: true,
           reviewCount: true,
           isFeatured: true,
           metaTitle: true,
           metaDescription: true,
-          images: {
+          variants: {
             select: {
               id: true,
-              url: true,
-              altText: true,
-              isFeatured: true,
+              name: true,
+              sku: true,
+              price: true,
+              salePrice: true,
+              stockQuantity: true,
+              isActive: true,
+              attributes: true,
+              images: {
+                select: {
+                  id: true,
+                  url: true,
+                  altText: true,
+                  isPrimary: true,
+                },
+                orderBy: { isPrimary: 'desc' },
+              },
             },
-            orderBy: { isFeatured: 'desc' },
           },
           category: {
             select: {
@@ -534,14 +548,6 @@ export class ProductsService {
               id: true,
               name: true,
               slug: true,
-            },
-          },
-          variants: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              stockQuantity: true,
             },
           },
           reviews: {
@@ -610,13 +616,23 @@ export class ProductsService {
         this.prisma.product.findMany({
           where,
           include: {
-            images: {
-              where: { isFeatured: true },
-              take: 1,
-            },
             category: true,
             brand: true,
-            variants: true,
+            variants: {
+              include: {
+                images: {
+                  where: { isPrimary: true },
+                  take: 1,
+                },
+              },
+            },
+            _count: {
+              select: {
+                variants: {
+                  where: { isActive: true },
+                },
+              },
+            },
           },
           orderBy: { createdAt: 'desc' },
           skip,
@@ -637,6 +653,46 @@ export class ProductsService {
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to retrieve admin products: ' + error.message,
+      );
+    }
+  }
+
+  /**
+   * Validate that product has at least one variant before publishing
+   * @param productId Product ID to validate
+   * @returns true if valid, throws exception if invalid
+   */
+  async validateProductForPublishing(productId: string): Promise<boolean> {
+    try {
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          variants: {
+            where: { isActive: true },
+          },
+        },
+      });
+
+      if (!product) {
+        throw new NotFoundException(`Product with ID ${productId} not found`);
+      }
+
+      if (!product.variants || product.variants.length === 0) {
+        throw new BadRequestException(
+          'Product cannot be published without at least one active variant',
+        );
+      }
+
+      return true;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to validate product: ' + error.message,
       );
     }
   }
@@ -717,6 +773,56 @@ export class ProductsService {
       throw new InternalServerErrorException(
         'Failed to permanently delete product: ' + error.message,
       );
+    }
+  }
+
+  async searchProducts(query?: string): Promise<any> {
+    try {
+      const where: any = {
+        status: 'PUBLISHED',
+        isDeleted: false,
+      };
+
+      if (query) {
+        where.OR = [
+          { name: { contains: query, mode: 'insensitive' } },
+          { sku: { contains: query, mode: 'insensitive' } },
+        ];
+      }
+
+      return await this.prisma.product.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          slug: true,
+          status: true,
+          category: {
+            select: { id: true, name: true, slug: true },
+          },
+          variants: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              sku: true,
+              price: true,
+              salePrice: true,
+              stockQuantity: true,
+              images: {
+                where: { isPrimary: true },
+                take: 1,
+                select: { url: true, altText: true },
+              },
+            },
+          },
+        },
+        take: 20,
+        orderBy: { name: 'asc' },
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to search products');
     }
   }
 }

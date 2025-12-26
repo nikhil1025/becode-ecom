@@ -5,8 +5,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
 import { FileUploadService } from '../common/services/file-upload.service';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class CategoriesService {
@@ -48,9 +48,14 @@ export class CategoriesService {
           products: {
             take: 10,
             include: {
-              images: {
-                where: { isFeatured: true },
+              variants: {
                 take: 1,
+                include: {
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
+                },
               },
             },
           },
@@ -263,6 +268,37 @@ export class CategoriesService {
       throw new InternalServerErrorException(
         'Failed to upload category image: ' + error.message,
       );
+    }
+  }
+
+  async searchCategories(query?: string): Promise<any> {
+    try {
+      const where: any = {};
+
+      if (query) {
+        where.OR = [
+          { name: { contains: query, mode: 'insensitive' } },
+          { slug: { contains: query, mode: 'insensitive' } },
+        ];
+      }
+
+      return await this.prisma.category.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          image: true,
+          _count: {
+            select: { products: true },
+          },
+        },
+        take: 20,
+        orderBy: { name: 'asc' },
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to search categories');
     }
   }
 }

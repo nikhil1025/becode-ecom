@@ -184,7 +184,15 @@ export class ReviewsService {
         include: {
           product: {
             include: {
-              images: true,
+              variants: {
+                take: 1,
+                include: {
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
+                },
+              },
             },
           },
         },

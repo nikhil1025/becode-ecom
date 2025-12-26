@@ -23,9 +23,7 @@ export class CartController {
   }
 
   @Get('total')
-  async getCartTotal(
-    @Request() req: { user: { userId: string } },
-  ): Promise<{
+  async getCartTotal(@Request() req: { user: { userId: string } }): Promise<{
     subtotal: number;
     tax: number;
     shipping: number;
@@ -38,7 +36,7 @@ export class CartController {
   @Post('items')
   async addItem(
     @Request() req: { user: { userId: string } },
-    @Body() body: { productId: string; quantity: number; variantId?: string },
+    @Body() body: { productId: string; quantity: number; variantId: string },
   ): Promise<any> {
     return this.cartService.addItem(
       req.user.userId,

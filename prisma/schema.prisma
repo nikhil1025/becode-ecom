@@ -114,36 +114,30 @@ model Brand {
 }
 
 model Product {
-  id                String        @id @default(uuid())
-  name              String
-  slug              String        @unique
-  sku               String        @unique
-  shortDescription  String?
-  longDescription   String?
-  categoryId        String
-  category          Category      @relation(fields: [categoryId], references: [id])
-  brandId           String?
-  brand             Brand?        @relation(fields: [brandId], references: [id])
-  regularPrice      Float
-  salePrice         Float?
-  costPrice         Float?
-  stockQuantity     Int           @default(0)
-  lowStockThreshold Int           @default(10)
-  weight            Float?
-  dimensions        Json?
-  status            ProductStatus @default(DRAFT)
-  isFeatured        Boolean       @default(false)
-  allowReviews      Boolean       @default(true)
-  averageRating     Float         @default(0)
-  reviewCount       Int           @default(0)
-  metaTitle         String?
-  metaDescription   String?
-  isDeleted         Boolean       @default(false)
-  deletedAt         DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id               String        @id @default(uuid())
+  name             String
+  slug             String        @unique
+  sku              String        @unique
+  shortDescription String?
+  longDescription  String?
+  categoryId       String
+  category         Category      @relation(fields: [categoryId], references: [id])
+  brandId          String?
+  brand            Brand?        @relation(fields: [brandId], references: [id])
+  weight           Float?
+  dimensions       Json?
+  status           ProductStatus @default(DRAFT)
+  isFeatured       Boolean       @default(false)
+  allowReviews     Boolean       @default(true)
+  averageRating    Float         @default(0)
+  reviewCount      Int           @default(0)
+  metaTitle        String?
+  metaDescription  String?
+  isDeleted        Boolean       @default(false)
+  deletedAt        DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  images           ProductImage[]
   variants         ProductVariant[]
   reviews          Review[]
   orderItems       OrderItem[]
@@ -158,34 +152,44 @@ model Product {
 }
 
 model ProductImage {
-  id         String   @id @default(uuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  url        String
-  altText    String?
-  position   Int      @default(0)
-  isFeatured Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        String         @id @default(uuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  position  Int            @default(0)
+  isPrimary Boolean        @default(false)
+  createdAt DateTime       @default(now())
 
+  @@index([variantId])
   @@map("product_images")
 }
 
 model ProductVariant {
-  id            String   @id @default(uuid())
-  productId     String
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sku           String   @unique
-  name          String
-  price         Float
-  stockQuantity Int      @default(0)
-  attributes    Json // {color: "red", size: "L"}
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default(uuid())
+  productId         String
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku               String   @unique
+  name              String
+  price             Float
+  salePrice         Float?
+  costPrice         Float?
+  stockQuantity     Int      @default(0)
+  lowStockThreshold Int      @default(10)
+  attributes        Json
+  weight            Float?
+  dimensions        Json?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
+  images     ProductImage[]
   orderItems OrderItem[]
   cartItems  CartItem[]
 
+  @@index([productId])
+  @@index([isActive])
+  @@index([stockQuantity])
   @@map("product_variants")
 }
 
@@ -237,17 +241,19 @@ model OrderItem {
   order              Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId          String
   product            Product         @relation(fields: [productId], references: [id])
-  variantId          String?
-  variant            ProductVariant? @relation(fields: [variantId], references: [id])
+  variantId          String
+  variant            ProductVariant  @relation(fields: [variantId], references: [id])
   quantity           Int
   price              Float
-  productSnapshot    Json // Store product details at time of order
+  productSnapshot    Json
   status             OrderItemStatus @default(PLACED)
   cancellationReason String?
   cancelledAt        DateTime?
   returnItems        ReturnItem[]
   createdAt          DateTime        @default(now())
 
+  @@index([orderId])
+  @@index([variantId])
   @@map("order_items")
 }
 
@@ -305,18 +311,21 @@ model Cart {
 }
 
 model CartItem {
-  id        String          @id @default(uuid())
+  id        String         @id @default(uuid())
   cartId    String
-  cart      Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId String
-  product   Product         @relation(fields: [productId], references: [id])
-  variantId String?
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
-  quantity  Int             @default(1)
+  product   Product        @relation(fields: [productId], references: [id])
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int            @default(1)
   price     Float
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@index([variantId])
   @@map("cart_items")
 }
 
@@ -369,6 +378,7 @@ enum ReturnStatus {
 enum TrackingStatus {
   ORDER_PLACED
   CONFIRMED
+  PROCESSING
   PACKED
   SHIPPED
   OUT_FOR_DELIVERY

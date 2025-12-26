@@ -5,9 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ReturnStatus } from '@prisma/client';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma.service';
 import { WalletService } from '../wallet/wallet.service';
-import { MailService } from '../mail/mail.service';
 import { ExecuteRefundDto } from './dto/execute-refund.dto';
 
 @Injectable()
@@ -130,7 +130,7 @@ export class RefundsService {
       });
 
       // 5. Credit the user's wallet (only if method is WALLET or ORIGINAL and payment was through wallet)
-      if (amount > 0 && (method === 'WALLET' || !method)) {
+      if (amount > 0 && (String(method) === 'WALLET' || !method)) {
         await this.walletService.credit(
           returnRequest.userId,
           amount,

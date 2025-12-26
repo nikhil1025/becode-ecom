@@ -6,9 +6,7 @@ import passport from 'passport';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://13.232.186.110:3000';
-// const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+import { FRONTEND_URL } from './types/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { BASE_URL } from '../types/config';
 
 @Injectable()
 export class LocalStorageService {
@@ -10,7 +11,7 @@ export class LocalStorageService {
 
   constructor() {
     this.uploadDir = path.join(process.cwd(), 'uploads');
-    this.baseUrl = process.env.BASE_URL || 'http://localhost:3001';
+    this.baseUrl = process.env.BASE_URL || BASE_URL;
     this.ensureUploadDir();
   }
 
