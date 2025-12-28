@@ -47,6 +47,21 @@ export class AdminAuthController {
   }
 
   @UseGuards(AdminJwtAuthGuard)
+  @Post('profile')
+  async updateProfile(
+    @Request() req: { user: User },
+    @Body()
+    body: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+    },
+  ) {
+    return this.authService.updateProfile(req.user.id, body);
+  }
+
+  @UseGuards(AdminJwtAuthGuard)
   @Post('profile/avatar')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(

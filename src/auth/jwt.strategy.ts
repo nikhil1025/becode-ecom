@@ -20,10 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       return null;
     }
-    return {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    };
+    // Return full user object (password already removed by validateUser)
+    return user;
   }
 }

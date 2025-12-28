@@ -103,7 +103,7 @@ export class AuthController {
     return await this.authService.forgotPassword(body.email);
   }
 
-  @Post('reset-password')
+  @Post('profile/reset-password')
   async resetPassword(@Body() body: { token: string; newPassword: string }) {
     return await this.authService.resetPassword(body.token, body.newPassword);
   }
@@ -122,13 +122,13 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('has-password')
+  @Get('profile/has-password')
   async hasPassword(@Request() req: { user: User }) {
     return await this.authService.hasPassword(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('create-password')
+  @Post('profile/create-password')
   async createPassword(
     @Request() req: { user: User },
     @Body() body: { newPassword: string },
