@@ -69,7 +69,7 @@ export class VariantsService {
     excludeVariantId?: string,
   ): Promise<void> {
     const whereClause: any = { sku };
-    
+
     if (excludeVariantId) {
       whereClause.id = { not: excludeVariantId };
     }
