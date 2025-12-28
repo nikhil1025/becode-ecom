@@ -593,6 +593,7 @@ export class ProductsService {
     limit?: number;
     search?: string;
     status?: string;
+    includeDeleted?: boolean;
   }): Promise<any> {
     try {
       const page = filters?.page || 1;
@@ -600,6 +601,13 @@ export class ProductsService {
       const skip = (page - 1) * limit;
 
       const where: any = {};
+
+      // By default, exclude deleted products unless explicitly requested
+      if (filters?.includeDeleted) {
+        where.isDeleted = true; // Show ONLY deleted products
+      } else {
+        where.isDeleted = false; // Show only non-deleted products
+      }
 
       if (filters?.search) {
         where.OR = [

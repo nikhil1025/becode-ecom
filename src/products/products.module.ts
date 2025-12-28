@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CommonModule } from '../common/common.module';
 import { PrismaService } from '../prisma.service';
+import { AdminProductsController } from './admin-products.controller';
 import { AdminVariantsController } from './admin-variants.controller';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
@@ -18,6 +19,7 @@ import { VariantsService } from './variants.service';
   ],
   controllers: [
     ProductsController,
+    AdminProductsController,
     AdminVariantsController,
     VariantsListingController,
   ],

@@ -6,10 +6,13 @@ import passport from 'passport';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { AppLoggerService } from './common/services/logger.service';
 import { FRONTEND_URL } from './types/config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: new AppLoggerService(),
+  });
 
   // Increase payload size limit for file uploads
   app.use(express.json({ limit: '50mb' }));
@@ -56,7 +59,7 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false, // Just strip unknown properties instead of throwing error
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,
@@ -80,6 +83,13 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`🚀 Application is running on: http://localhost:${port}/api`);
+
+  const logger = new AppLoggerService();
+  logger.log(
+    `🚀 Application is running on: http://localhost:${port}/api`,
+    'Bootstrap',
+  );
+  logger.log(`🌍 CORS enabled for: ${FRONTEND_URL}`, 'Bootstrap');
+  logger.log(`📝 Global logging enabled`, 'Bootstrap');
 }
 bootstrap();

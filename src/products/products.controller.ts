@@ -11,7 +11,10 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import {
+  AnyFilesInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
 import { $Enums } from '@prisma/client';
 import { AdminJwtAuthGuard } from '../auth/admin-jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -29,7 +32,7 @@ export class ProductsController {
     private variantsService: VariantsService,
   ) {}
 
-  // Public endpoint for users/guests - limited data
+  // Public endpoint for users/guests - only PUBLISHED products
   @Get()
   async findAll(
     @Query('category') category?: string,
@@ -106,6 +109,7 @@ export class ProductsController {
   @Post()
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  @UseInterceptors(AnyFilesInterceptor())
   async create(@Body() data: CreateProductDto): Promise<any> {
     // Images are now managed at variant level only
     return this.productsService.create(data);
@@ -114,6 +118,7 @@ export class ProductsController {
   @Put(':id')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
+  @UseInterceptors(AnyFilesInterceptor())
   async update(
     @Param('id') id: string,
     @Body() data: UpdateProductDto,

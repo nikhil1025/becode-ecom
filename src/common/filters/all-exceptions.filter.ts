@@ -4,14 +4,14 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+import { AppLoggerService } from '../services/logger.service';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  private readonly logger = new Logger(AllExceptionsFilter.name);
+  private readonly logger = new AppLoggerService();
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -68,11 +68,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = exception.message;
     }
 
-    // Log the error
-    this.logger.error(
-      `${request.method} ${request.url} - Status: ${status} - Message: ${message}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    // Enhanced error logging
+    const errorDetails = {
+      method: request.method,
+      url: request.url,
+      statusCode: status,
+      message,
+      errors,
+      exception: exception instanceof Error ? exception.message : exception,
+      stack: exception instanceof Error ? exception.stack : undefined,
+    };
+
+    console.error('\n' + '🔴'.repeat(40));
+    console.error(`❌ EXCEPTION CAUGHT | ${new Date().toISOString()}`);
+    console.error('─'.repeat(80));
+    console.error('   Exception Details:', JSON.stringify(errorDetails, null, 2));
+    console.error('🔴'.repeat(40) + '\n');
 
     // Send response
     response.status(status).json({

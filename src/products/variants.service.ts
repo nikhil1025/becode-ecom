@@ -68,11 +68,14 @@ export class VariantsService {
     sku: string,
     excludeVariantId?: string,
   ): Promise<void> {
+    const whereClause: any = { sku };
+    
+    if (excludeVariantId) {
+      whereClause.id = { not: excludeVariantId };
+    }
+
     const existingVariant = await this.prisma.productVariant.findFirst({
-      where: {
-        sku,
-        id: excludeVariantId ? { not: excludeVariantId } : undefined,
-      },
+      where: whereClause,
     });
 
     if (existingVariant) {
@@ -253,12 +256,13 @@ export class VariantsService {
         );
       }
 
-      // Check SKU uniqueness if SKU is being updated
-      if (
-        updateVariantDto.sku &&
-        updateVariantDto.sku !== existingVariant.sku
-      ) {
-        await this.checkSkuUniqueness(updateVariantDto.sku, variantId);
+      // Check SKU uniqueness ONLY if SKU is being changed to a different value
+      if (updateVariantDto.sku) {
+        const skuChanged = updateVariantDto.sku !== existingVariant.sku;
+        if (skuChanged) {
+          // New SKU provided - check if it's available
+          await this.checkSkuUniqueness(updateVariantDto.sku, variantId);
+        }
       }
 
       // Update variant
