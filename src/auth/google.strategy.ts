@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy, VerifyCallback } from 'passport-google-oauth20';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma.service';
 import { BASE_URL } from '../types/config';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {
     super({
       clientID: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
@@ -49,12 +53,32 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
           role: 'CUSTOMER',
         },
       });
+
+      // Send welcome email for new Google OAuth users (non-blocking)
+      this.mailService
+        .sendGoogleOAuthWelcomeEmail(user.email, {
+          firstName: user.firstName || 'there',
+          email: user.email,
+        })
+        .catch((err) =>
+          console.error('Failed to send Google OAuth welcome email:', err),
+        );
     } else if (!user.googleId) {
       // Update existing user with Google ID if they signed up with email/password first
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: { googleId: id },
       });
+
+      // Send account linking notification (non-blocking)
+      this.mailService
+        .sendAccountLinkedEmail(user.email, {
+          firstName: user.firstName || 'there',
+          provider: 'Google',
+        })
+        .catch((err) =>
+          console.error('Failed to send account linked email:', err),
+        );
     }
 
     const { password, ...userWithoutPassword } = user;

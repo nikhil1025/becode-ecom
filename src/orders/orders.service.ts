@@ -209,7 +209,7 @@ export class OrdersService {
           await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
         }
 
-        // 5. Send order confirmation email (outside transaction)
+        // 5. Send order confirmation and processing emails (outside transaction)
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (user?.email) {
           try {
@@ -222,8 +222,26 @@ export class OrdersService {
                 price: item.price,
               })),
             });
+
+            // Send order processing email
+            await this.mailService.sendOrderProcessingEmail(user.email, {
+              firstName: user.firstName,
+              orderNumber: order.orderNumber,
+              orderId: order.id,
+              items: order.items.map((item) => ({
+                name: item.product.name,
+                quantity: item.quantity,
+                price: item.price,
+                image: item.variant?.images?.[0]?.url || '',
+              })),
+              subtotal,
+              tax,
+              shipping,
+              total,
+              shippingAddress: order.shippingAddress,
+            });
           } catch (error) {
-            console.error('Failed to send order confirmation email:', error);
+            console.error('Failed to send order emails:', error);
           }
         }
 
@@ -611,10 +629,35 @@ export class OrdersService {
         throw new NotFoundException('Order not found');
       }
 
-      return await this.prisma.order.update({
+      const updatedOrder = await this.prisma.order.update({
         where: { id: orderId },
         data: { paymentStatus },
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+            },
+          },
+        },
       });
+
+      // Send payment status update email
+      if (updatedOrder.user?.email) {
+        this.mailService
+          .sendPaymentStatusUpdateEmail(updatedOrder.user.email, {
+            firstName: updatedOrder.user.firstName || 'there',
+            orderNumber: updatedOrder.orderNumber,
+            orderId: updatedOrder.id,
+            paymentStatus: updatedOrder.paymentStatus,
+            amount: updatedOrder.total,
+          })
+          .catch((err) =>
+            console.error('Failed to send payment status email:', err),
+          );
+      }
+
+      return updatedOrder;
     } catch (error) {
       if (
         error instanceof BadRequestException ||

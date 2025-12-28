@@ -1,17 +1,23 @@
-
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class WalletService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
   /**
    * Finds a user's wallet, creating one if it doesn't exist.
    * This is a private method to ensure a wallet exists before any operation.
    */
-  private async findOrCreateWallet(userId: string, tx?: Prisma.TransactionClient) {
+  private async findOrCreateWallet(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
     const prismaClient = tx || this.prisma;
     let wallet = await prismaClient.wallet.findUnique({ where: { userId } });
 
@@ -48,9 +54,17 @@ export class WalletService {
               increment: amount,
             },
           },
+          include: {
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+              },
+            },
+          },
         });
 
-        await tx.walletTransaction.create({
+        const transaction = await tx.walletTransaction.create({
           data: {
             walletId: wallet.id,
             amount,
@@ -59,6 +73,21 @@ export class WalletService {
             relatedId,
           },
         });
+
+        // Send wallet credit email
+        if (updatedWallet.user?.email) {
+          this.mailService
+            .sendWalletCreditEmail(updatedWallet.user.email, {
+              firstName: updatedWallet.user.firstName || 'there',
+              amount: amount,
+              reason: description,
+              newBalance: updatedWallet.balance,
+              transactionId: transaction.id,
+            })
+            .catch((err) =>
+              console.error('Failed to send wallet credit email:', err),
+            );
+        }
 
         return updatedWallet;
       });

@@ -361,7 +361,7 @@ export class CartService {
         0,
       );
       const tax = subtotal * 0.1; // 10% tax
-      const shipping = subtotal > 50 ? 0 : 10; // Free shipping over $50
+      const shipping = subtotal > 50 ? 0 : 10; // Free shipping over ₹50
       const total = subtotal + tax + shipping;
 
       return {

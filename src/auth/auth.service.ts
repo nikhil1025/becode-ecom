@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma.service';
 import { S3Service } from '../storage/s3.service';
 
@@ -19,6 +20,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private s3: S3Service,
+    private mailService: MailService,
   ) {}
 
   async register(
@@ -77,6 +79,15 @@ export class AuthService {
       });
 
       const { password: _, ...userWithoutPassword } = user;
+
+      // Send welcome email (non-blocking)
+      this.mailService
+        .sendWelcomeEmail(user.email, {
+          firstName: user.firstName || 'there',
+          email: user.email,
+        })
+        .catch((err) => console.error('Failed to send welcome email:', err));
+
       return { user: userWithoutPassword, token };
     } catch (error) {
       if (
@@ -412,10 +423,16 @@ export class AuthService {
         { expiresIn: '1h' },
       );
 
-      // In a real app, send email here
-      // For now, we'll just return the token (in production, this would be sent via email)
-      console.log(`Password reset token for ${email}: ${resetToken}`);
-      // TODO: Send email with reset link: ${process.env.FRONTEND_URL}/auth/reset-password/${resetToken}
+      // Send password reset email (non-blocking)
+      this.mailService
+        .sendPasswordResetEmail(user.email, {
+          firstName: user.firstName || 'there',
+          resetToken,
+          expiresIn: '1 hour',
+        })
+        .catch((err) =>
+          console.error('Failed to send password reset email:', err),
+        );
 
       return {
         message: 'If that email exists, a password reset link has been sent',

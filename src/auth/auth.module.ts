@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { MailModule } from '../mail/mail.module';
 import { PrismaService } from '../prisma.service';
 import { S3Service } from '../storage/s3.service';
 import { WalletModule } from '../wallet/wallet.module';
@@ -29,6 +30,7 @@ import { JwtStrategy } from './jwt.strategy';
       inject: [ConfigService],
     }),
     WalletModule,
+    MailModule,
   ],
   providers: [
     AuthService,

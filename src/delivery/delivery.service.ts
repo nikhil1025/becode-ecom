@@ -5,11 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { TrackingStatus } from '@prisma/client';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class DeliveryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
   // Delivery Agent Management
   async createAgent(name: string, phone: string, vehicleInfo?: string) {
@@ -98,13 +102,65 @@ export class DeliveryService {
 
   async updateTrackingStatus(orderId: string, status: TrackingStatus) {
     try {
-      return await this.prisma.order.update({
+      const order = await this.prisma.order.update({
         where: { id: orderId },
         data: { trackingStatus: status },
         include: {
           deliveryAgent: true,
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+            },
+          },
         },
       });
+
+      // Send appropriate tracking emails based on status
+      if (order.user?.email) {
+        switch (status) {
+          case TrackingStatus.SHIPPED:
+            this.mailService
+              .sendOrderShipped(order.user.email, {
+                orderId: order.orderNumber,
+                trackingNumber: order.id,
+              })
+              .catch((err) =>
+                console.error('Failed to send shipped email:', err),
+              );
+            break;
+
+          case TrackingStatus.OUT_FOR_DELIVERY:
+            this.mailService
+              .sendOutForDeliveryEmail(order.user.email, {
+                firstName: order.user.firstName || 'there',
+                orderNumber: order.orderNumber,
+                estimatedTime: 'by end of day',
+                deliveryAgent: order.deliveryAgent
+                  ? {
+                      name: order.deliveryAgent.name,
+                      phone: order.deliveryAgent.phone || undefined,
+                    }
+                  : undefined,
+              })
+              .catch((err) =>
+                console.error('Failed to send out-for-delivery email:', err),
+              );
+            break;
+
+          case TrackingStatus.DELIVERED:
+            this.mailService
+              .sendOrderDelivered(order.user.email, {
+                orderId: order.orderNumber,
+              })
+              .catch((err) =>
+                console.error('Failed to send delivered email:', err),
+              );
+            break;
+        }
+      }
+
+      return order;
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to update tracking status: ' + error.message,

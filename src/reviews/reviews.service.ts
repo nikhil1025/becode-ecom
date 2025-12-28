@@ -6,11 +6,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ReviewStatus } from '@prisma/client';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
   async createReview(
     userId: string,
@@ -87,11 +91,30 @@ export class ReviewsService {
               email: true,
             },
           },
+          product: {
+            select: {
+              name: true,
+            },
+          },
         },
       });
 
       // Update product average rating
       await this.updateProductRating(data.productId);
+
+      // Send review submitted email
+      if (review.user?.email) {
+        this.mailService
+          .sendReviewSubmittedEmail(review.user.email, {
+            firstName: review.user.firstName || 'there',
+            productName: review.product.name,
+            rating: review.rating,
+            reviewText: review.content,
+          })
+          .catch((err) =>
+            console.error('Failed to send review submitted email:', err),
+          );
+      }
 
       return review;
     } catch (error) {
@@ -345,10 +368,36 @@ export class ReviewsService {
         data: { status },
         include: {
           product: true,
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+            },
+          },
         },
       });
 
       await this.updateProductRating(review.productId);
+
+      // Send review status email
+      if (
+        review.user?.email &&
+        (status === ReviewStatus.APPROVED || status === ReviewStatus.REJECTED)
+      ) {
+        this.mailService
+          .sendReviewStatusEmail(review.user.email, {
+            firstName: review.user.firstName || 'there',
+            productName: review.product.name,
+            status: status as 'APPROVED' | 'REJECTED',
+            reason:
+              status === ReviewStatus.REJECTED
+                ? 'Does not meet community guidelines'
+                : undefined,
+          })
+          .catch((err) =>
+            console.error('Failed to send review status email:', err),
+          );
+      }
 
       return review;
     } catch (error) {
