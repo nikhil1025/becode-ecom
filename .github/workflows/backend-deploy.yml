@@ -140,7 +140,7 @@ jobs:
             BREVO_SMTP_HOST=${{ secrets.BREVO_SMTP_HOST }}
             BREVO_SMTP_PORT=${{ secrets.BREVO_SMTP_PORT }}
             BREVO_SMTP_USER=${{ secrets.BREVO_SMTP_USER }}
-            BREVO_SMTP_PASSWORD=${{ secrets.BREVO_SMTP_PASSWORD }}
+            BREVO_SMTP_KEY=${{ secrets.BREVO_SMTP_KEY }}
             MAIL_FROM=${{ secrets.MAIL_FROM }}
             ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
 

@@ -9,9 +9,10 @@ export class AppLoggerService extends ConsoleLogger implements LoggerService {
   }
 
   log(message: any, context?: string) {
-    console.log('\n' + '='.repeat(80));
+    // console.log('\n' + '='.repeat(80));
     console.log('✅ SUCCESS | ' + this.formatMessage(message, context));
-    console.log('='.repeat(80) + '\n');
+    // console.log('\n');
+    // console.log('='.repeat(80) + '\n');
   }
 
   error(message: any, trace?: string, context?: string) {

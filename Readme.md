@@ -9,6 +9,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Tech Stack
 
 ### Frontend
+
 - **Framework**: Next.js 14+ (App Router)
 - **UI Library**: shadcn/ui (Radix UI + Tailwind CSS)
 - **Styling**: Tailwind CSS
@@ -18,6 +19,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - **Theme**: next-themes (dark/light mode)
 
 ### Backend
+
 - **Framework**: NestJS
 - **Database**: PostgreSQL
 - **ORM**: Prisma / TypeORM
@@ -31,6 +33,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Design Philosophy
 
 ### Visual Design Principles
+
 - **Modern & Minimal**: Clean layouts with ample white space
 - **Consistent Design System**: Unified color palette, typography, and component patterns
 - **Accessibility First**: WCAG 2.1 AA compliance
@@ -38,6 +41,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - **Performance**: Optimized images, lazy loading, and efficient data fetching
 
 ### Color Scheme
+
 - **Light Mode**: Clean whites, subtle grays, accent colors
 - **Dark Mode**: Deep backgrounds, comfortable contrast, vibrant accents
 - **Brand Colors**: Primary, secondary, success, warning, error states
@@ -47,6 +51,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Frontend Architecture
 
 ### Project Structure
+
 ```
 /frontend
 ├── /src
@@ -89,6 +94,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 #### 1. Customer-Facing Pages
 
 **Homepage**
+
 - Hero section with featured products/collections
 - Category grid with beautiful imagery
 - Trending products carousel
@@ -97,6 +103,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Customer testimonials
 
 **Product Listing Page**
+
 - Sidebar filters (categories, price range, ratings, brands)
 - Sort options (relevance, price, newest)
 - Grid/list view toggle
@@ -105,6 +112,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Active filter chips with clear all option
 
 **Product Detail Page**
+
 - Image gallery with zoom and thumbnail navigation
 - Product title, price, and SKU
 - Star rating with review count
@@ -117,6 +125,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Size guide modal
 
 **Shopping Cart**
+
 - Cart items with thumbnail, title, variant, quantity controls
 - Remove item option
 - Price breakdown (subtotal, shipping, tax, total)
@@ -125,6 +134,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Saved for later section
 
 **Checkout**
+
 - Multi-step process (shipping, payment, review)
 - Address form with autocomplete
 - Shipping method selection
@@ -133,6 +143,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Progress indicator
 
 **User Account**
+
 - Profile management
 - Order history with status tracking
 - Saved addresses
@@ -143,6 +154,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 #### 2. Admin Dashboard Pages
 
 **Dashboard Overview**
+
 - Revenue metrics cards (today, week, month, year)
 - Sales chart (line/bar graph)
 - Recent orders table
@@ -151,6 +163,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Quick action buttons
 
 **Products Management**
+
 - Products data table with search and filters
 - Columns: image, name, SKU, category, price, stock, status, actions
 - Bulk actions (delete, export, change status)
@@ -158,6 +171,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Import products option
 
 **Product Upload/Edit Form**
+
 - **Basic Information Section**
   - Product name
   - SKU (auto-generate option)
@@ -211,6 +225,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
   - Schedule publishing
 
 **Orders Management**
+
 - Orders table with filters (status, date range, payment method)
 - Columns: order number, date, customer, items, total, status, actions
 - Order detail view with timeline
@@ -219,12 +234,14 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Refund processing
 
 **Customers Management**
+
 - Customer list with search
 - Customer details (orders, lifetime value, contact info)
 - Customer groups/segments
 - Export customer data
 
 **Analytics**
+
 - Sales reports
 - Product performance
 - Customer acquisition
@@ -233,6 +250,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Custom date range selection
 
 **Settings**
+
 - Store information
 - Payment gateway configuration
 - Shipping zones and rates
@@ -246,6 +264,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Frontend Implementation Steps
 
 ### Phase 1: Project Setup
+
 1. Initialize Next.js project with TypeScript
 2. Install and configure Tailwind CSS
 3. Set up shadcn/ui components
@@ -255,6 +274,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 7. Set up API client with interceptors
 
 ### Phase 2: Authentication & Layout
+
 1. Create authentication context
 2. Build login and registration pages
 3. Implement JWT token management
@@ -264,6 +284,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 7. Implement theme toggle component
 
 ### Phase 3: Customer-Facing Features
+
 1. Build homepage with hero and sections
 2. Create product listing page with filters
 3. Implement product detail page
@@ -274,6 +295,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 8. Build search functionality
 
 ### Phase 4: Admin Dashboard
+
 1. Create dashboard overview with charts
 2. Build products data table
 3. Create product upload form with all sections
@@ -285,6 +307,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 9. Create settings pages
 
 ### Phase 5: UI Components & Refinement
+
 1. Build reusable product card component
 2. Create filter sidebar component
 3. Build order status timeline
@@ -295,6 +318,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 8. Build toast notifications
 
 ### Phase 6: Optimization & Polish
+
 1. Implement image optimization
 2. Add lazy loading for images and components
 3. Optimize bundle size
@@ -311,6 +335,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Backend Architecture
 
 ### Project Structure
+
 ```
 /backend
 ├── /src
@@ -349,12 +374,14 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ### Database Schema Design
 
 **Users Table**
+
 - id, email, password (hashed), firstName, lastName
 - role (customer, admin, superadmin)
 - emailVerified, isActive
 - timestamps
 
 **Products Table**
+
 - id, name, slug, sku
 - shortDescription, longDescription
 - categoryId, brandId
@@ -367,11 +394,13 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - timestamps
 
 **Product Images Table**
+
 - id, productId
 - url, altText, position
 - isFeatured
 
 **Product Variants Table**
+
 - id, productId
 - sku, name
 - price, stockQuantity
@@ -379,6 +408,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - isActive
 
 **Categories Table**
+
 - id, name, slug
 - description, image
 - parentId (for nested categories)
@@ -386,6 +416,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - timestamps
 
 **Orders Table**
+
 - id, orderNumber, userId
 - status (pending, processing, shipped, delivered, cancelled)
 - paymentStatus (pending, paid, failed, refunded)
@@ -397,11 +428,13 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - timestamps
 
 **Order Items Table**
+
 - id, orderId, productId, variantId
 - quantity, price
 - productSnapshot (JSON)
 
 **Reviews Table**
+
 - id, productId, userId
 - rating, title, content
 - images (JSON array)
@@ -410,6 +443,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - timestamps
 
 **Cart Table**
+
 - id, userId, sessionId (for guests)
 - items (JSON or separate table)
 - expiresAt
@@ -419,6 +453,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Backend Implementation Steps
 
 ### Phase 1: Project Setup
+
 1. Initialize NestJS project with TypeScript
 2. Set up PostgreSQL database
 3. Configure Prisma/TypeORM
@@ -428,6 +463,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 7. Configure logging (Winston/Pino)
 
 ### Phase 2: Database & Models
+
 1. Design complete database schema
 2. Create migrations
 3. Set up seed data for testing
@@ -436,6 +472,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 6. Configure database backup strategy
 
 ### Phase 3: Authentication & Authorization
+
 1. Implement JWT strategy
 2. Create auth endpoints (register, login, refresh, logout)
 3. Build password hashing service
@@ -447,6 +484,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ### Phase 4: Core Modules
 
 **Products Module**
+
 1. Create CRUD endpoints for products
 2. Implement product search with filters
 3. Build variant management endpoints
@@ -457,6 +495,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 8. Create product analytics endpoints
 
 **Orders Module**
+
 1. Create order placement endpoint
 2. Build order management CRUD
 3. Implement order status updates
@@ -466,6 +505,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 7. Add order notifications
 
 **Users Module**
+
 1. Create user profile endpoints
 2. Build address management
 3. Implement user preferences
@@ -473,12 +513,14 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 5. Build customer analytics
 
 **Categories Module**
+
 1. Create category CRUD
 2. Implement nested categories
 3. Build category tree endpoint
 4. Add category image upload
 
 ### Phase 5: Advanced Features
+
 1. Implement payment gateway integration
 2. Build shipping calculation service
 3. Create tax calculation service
@@ -489,6 +531,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 8. Build email notification service
 
 ### Phase 6: File Upload & Storage
+
 1. Configure multer for file uploads
 2. Implement image validation
 3. Set up cloud storage (S3/Cloudinary)
@@ -498,6 +541,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 7. Add virus scanning for uploads
 
 ### Phase 7: Analytics & Reporting
+
 1. Build sales analytics endpoints
 2. Create customer insights
 3. Implement product performance tracking
@@ -505,6 +549,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 5. Create export functionality for reports
 
 ### Phase 8: Security & Optimization
+
 1. Implement request validation
 2. Add XSS protection
 3. Set up CSRF tokens
@@ -521,6 +566,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## API Endpoints Structure
 
 ### Authentication
+
 - POST `/auth/register` - User registration
 - POST `/auth/login` - User login
 - POST `/auth/refresh` - Refresh access token
@@ -529,6 +575,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - POST `/auth/reset-password` - Reset password with token
 
 ### Products
+
 - GET `/products` - List products (with filters, pagination)
 - GET `/products/:id` - Get single product
 - POST `/products` - Create product (admin)
@@ -539,6 +586,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - GET `/products/:id/reviews` - Get product reviews
 
 ### Categories
+
 - GET `/categories` - List all categories
 - GET `/categories/:id` - Get category details
 - POST `/categories` - Create category (admin)
@@ -546,6 +594,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - DELETE `/categories/:id` - Delete category (admin)
 
 ### Orders
+
 - POST `/orders` - Create new order
 - GET `/orders` - List orders (user: own orders, admin: all)
 - GET `/orders/:id` - Get order details
@@ -553,6 +602,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - POST `/orders/:id/refund` - Process refund (admin)
 
 ### Users
+
 - GET `/users/profile` - Get user profile
 - PUT `/users/profile` - Update user profile
 - GET `/users/addresses` - Get user addresses
@@ -561,6 +611,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - DELETE `/users/addresses/:id` - Delete address
 
 ### Cart
+
 - GET `/cart` - Get user cart
 - POST `/cart/items` - Add item to cart
 - PUT `/cart/items/:id` - Update cart item
@@ -568,6 +619,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - DELETE `/cart` - Clear cart
 
 ### Admin Analytics
+
 - GET `/admin/analytics/overview` - Dashboard overview stats
 - GET `/admin/analytics/sales` - Sales reports
 - GET `/admin/analytics/products` - Product performance
@@ -578,6 +630,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Key Features to Implement
 
 ### Product Upload System
+
 - Drag-and-drop interface for multiple images
 - Image preview before upload
 - Progress indicators for uploads
@@ -588,6 +641,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Bulk image operations
 
 ### Dashboard Features
+
 - Real-time sales data
 - Interactive charts and graphs
 - Quick action shortcuts
@@ -598,6 +652,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Keyboard shortcuts for power users
 
 ### Search & Filtering
+
 - Full-text search across products
 - Advanced filters (price range, rating, attributes)
 - Search suggestions and autocomplete
@@ -607,6 +662,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - View saved filters
 
 ### Responsive Design Breakpoints
+
 - Mobile: 320px - 640px
 - Tablet: 641px - 1024px
 - Desktop: 1025px - 1440px
@@ -617,6 +673,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Testing Strategy
 
 ### Frontend Testing
+
 1. Unit tests for utilities and hooks
 2. Component tests with React Testing Library
 3. Integration tests for user flows
@@ -626,6 +683,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 7. Performance testing
 
 ### Backend Testing
+
 1. Unit tests for services
 2. Integration tests for endpoints
 3. E2E API tests
@@ -638,6 +696,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Deployment Considerations
 
 ### Frontend Deployment
+
 - Platform: Vercel / Netlify / AWS Amplify
 - Configure environment variables
 - Set up preview deployments
@@ -646,6 +705,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 - Configure analytics
 
 ### Backend Deployment
+
 - Platform: AWS / Google Cloud / DigitalOcean
 - Containerize with Docker
 - Set up CI/CD pipeline
@@ -660,6 +720,7 @@ A modern, full-stack e-commerce platform built with Next.js and NestJS, featurin
 ## Environment Variables
 
 ### Frontend (.env.local)
+
 ```
 NEXT_PUBLIC_API_URL=
 NEXT_PUBLIC_STRIPE_PUBLIC_KEY=
@@ -667,6 +728,7 @@ NEXT_PUBLIC_ANALYTICS_ID=
 ```
 
 ### Backend (.env)
+
 ```
 DATABASE_URL=
 JWT_SECRET=
@@ -675,10 +737,10 @@ AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_S3_BUCKET=
 STRIPE_SECRET_KEY=
-EMAIL_HOST=
-EMAIL_PORT=
-EMAIL_USER=
-EMAIL_PASSWORD=
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=587
+BREVO_SMTP_USER=
+BREVO_SMTP_KEY=
 REDIS_URL=
 ```
 
@@ -687,6 +749,7 @@ REDIS_URL=
 ## Performance Optimization Checklist
 
 ### Frontend
+
 - [ ] Image optimization (WebP, lazy loading)
 - [ ] Code splitting and lazy loading
 - [ ] Bundle size optimization
@@ -697,6 +760,7 @@ REDIS_URL=
 - [ ] Optimize third-party scripts
 
 ### Backend
+
 - [ ] Database indexing on frequently queried fields
 - [ ] Implement Redis caching
 - [ ] Optimize database queries (N+1 problem)

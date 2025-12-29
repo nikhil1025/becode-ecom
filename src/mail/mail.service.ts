@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { MAIL_CONFIG } from './mail.config';
 import {
@@ -21,17 +21,56 @@ import {
 @Injectable()
 export class MailService {
   private transporter: nodemailer.Transporter;
+  private readonly logger = new Logger(MailService.name);
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
+    // Brevo SMTP Configuration
+    // Supports both API key authentication and traditional SMTP credentials
+    const transportConfig: any = {
       host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
       port: parseInt(process.env.BREVO_SMTP_PORT || '587'),
-      secure: false,
+      secure: false, // Use TLS
       auth: {
-        user: process.env.BREVO_SMTP_USER,
-        pass: process.env.BREVO_SMTP_PASSWORD,
+        user: process.env.BREVO_SMTP_USER, // Your Brevo login email or SMTP username
+        pass: process.env.BREVO_SMTP_KEY, // Your SMTP API key or SMTP password
       },
-    });
+      // Additional options for better reliability
+      pool: true, // Use pooled connections
+      maxConnections: 5, // Max number of simultaneous connections
+      maxMessages: 100, // Max messages per connection
+      rateDelta: 1000, // Time frame for rate limiting (1 second)
+      rateLimit: 5, // Max messages per rateDelta
+    };
+
+    // Log configuration (without exposing credentials)
+    this.logger.log(
+      `📧 Initializing Brevo SMTP: ${transportConfig.host}:${transportConfig.port}`,
+    );
+    this.logger.log(
+      `   └─ User: ${process.env.BREVO_SMTP_USER ? '✓ Set' : '✗ Missing'} | API Key: ${process.env.BREVO_SMTP_KEY ? '✓ Set' : '✗ Missing'}`,
+    );
+
+    this.transporter = nodemailer.createTransport(transportConfig);
+
+    // Verify SMTP connection on startup
+    this.verifyConnection();
+  }
+
+  /**
+   * Verify SMTP connection is working
+   */
+  private async verifyConnection(): Promise<void> {
+    try {
+      await this.transporter.verify();
+      this.logger.log('✅ SMTP connection verified successfully');
+    } catch (error) {
+      this.logger.error(
+        `❌ SMTP connection verification failed: ${error.message}`,
+      );
+      this.logger.warn(
+        '⚠️  Email functionality may not work. Please check your Brevo SMTP credentials.',
+      );
+    }
   }
 
   // ============================================
