@@ -1,5 +1,5 @@
 /**
- * Centralized Email Configuration for Theming Cart
+ * Centralized Email Configuration for Theming Kart
  *
  * This file contains all branding and email settings.
  * Update the logo URL here to change it across all email templates.
@@ -7,7 +7,7 @@
 
 export const MAIL_CONFIG = {
   // Branding
-  APP_NAME: 'Theming Cart',
+  APP_NAME: 'Theming Kart',
   LOGO_URL:
     process.env.APP_LOGO_URL ||
     'https://via.placeholder.com/200x60/4CAF50/FFFFFF?text=Theming+Cart',
@@ -40,7 +40,7 @@ export const MAIL_CONFIG = {
   },
 
   // Footer Text
-  FOOTER_TEXT: `© ${new Date().getFullYear()} Theming Cart. All rights reserved.`,
+  FOOTER_TEXT: `© ${new Date().getFullYear()} Theming Kart. All rights reserved.`,
 
   // Typography
   FONT_FAMILY: "'Segoe UI', 'Helvetica Neue', Arial, sans-serif",

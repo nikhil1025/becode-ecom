@@ -25,7 +25,7 @@ export class CommunityService {
       this.mailService
         .sendCommunityJoinedEmail(member.email, {
           firstName: member.name.split(' ')[0],
-          communityName: 'Theming Cart Community',
+          communityName: 'Theming Kart Community',
           benefits: [
             'Exclusive member-only discounts',
             'Early access to new products',
@@ -68,7 +68,7 @@ export class CommunityService {
       this.mailService
         .sendCommunityStatusEmail(member.email, {
           firstName: member.name.split(' ')[0],
-          communityName: 'Theming Cart Community',
+          communityName: 'Theming Kart Community',
           status: status as 'APPROVED' | 'REJECTED' | 'REMOVED',
           reason:
             status === 'APPROVED'

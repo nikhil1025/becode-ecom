@@ -88,7 +88,7 @@ export class MailService {
     },
   ): Promise<void> {
     const content = `
-      ${headerTemplate({ title: 'Welcome to Theming Cart!', emoji: '🎉' })}
+      ${headerTemplate({ title: 'Welcome to Theming Kart!', emoji: '🎉' })}
       <div style="padding: 40px;">
         <h2 style="color: #333; margin: 0 0 20px;">Hi ${userDetails.firstName},</h2>
         <p style="color: #666; line-height: 1.8; font-size: 16px;">
@@ -1619,7 +1619,7 @@ export class MailService {
     await this.transporter.sendMail({
       from: MAIL_CONFIG.FROM_EMAIL,
       to,
-      subject: '🎂 Happy Birthday from Theming Cart!',
+      subject: '🎂 Happy Birthday from Theming Kart!',
       html: wrapEmailContent(content),
     });
   }
@@ -2235,7 +2235,7 @@ export class MailService {
     await this.transporter.sendMail({
       from: MAIL_CONFIG.FROM_EMAIL,
       to,
-      subject: 'Thank You for Contacting Theming Cart',
+      subject: 'Thank You for Contacting Theming Kart',
       html: wrapEmailContent(content),
     });
   }
