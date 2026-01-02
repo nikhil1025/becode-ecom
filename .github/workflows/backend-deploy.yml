@@ -173,64 +173,33 @@ jobs:
 
             echo "🧬 Running Prisma migrations safely..."
 
-            # Check if _prisma_migrations table exists
-            echo "🔍 Checking database migration state..."
-            MIGRATION_TABLE_EXISTS=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
-              npx prisma db execute --stdin <<'EOF'
-            SELECT EXISTS (
-              SELECT FROM information_schema.tables 
-              WHERE table_schema = 'public' 
-              AND table_name = '_prisma_migrations'
-            ) as exists;
-            EOF
-            " 2>&1 | grep -i true || echo "false")
-
-            if [[ "$MIGRATION_TABLE_EXISTS" == *"true"* ]]; then
-              echo "✅ Migration table exists, checking status..."
-              
-              # Check for pending migrations
-              MIGRATION_STATUS=$(docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status 2>&1)
-              
-              if echo "$MIGRATION_STATUS" | grep -q "Database schema is up to date"; then
-                echo "✅ Database is already up to date"
-              elif echo "$MIGRATION_STATUS" | grep -q "Following migrations have not yet been applied"; then
-                echo "📦 Applying pending migrations..."
-                docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
-                echo "✅ Migrations applied successfully"
-              else
-                echo "📦 Running migration deploy..."
-                docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
-              fi
+            # Try to run migrations, if P3005 error occurs, baseline instead
+            echo "📦 Attempting to apply migrations..."
+            
+            if docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy 2>&1 | tee /tmp/migration_output.log; then
+              echo "✅ Migrations applied successfully"
             else
-              echo "⚠️  Migration table doesn't exist - checking if database is empty..."
-              
-              # Check if database has any tables
-              TABLES_EXIST=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
-                npx prisma db execute --stdin <<'EOF'
-              SELECT COUNT(*) > 0 as has_tables FROM information_schema.tables 
-              WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-              EOF
-              " 2>&1 | grep -i true || echo "false")
-              
-              if [[ "$TABLES_EXIST" == *"true"* ]]; then
-                echo "⚠️  Database has tables but no migration history!"
-                echo "🔧 Baselining existing migrations..."
+              # Check if it's the P3005 error (schema not empty)
+              if grep -q "P3005" /tmp/migration_output.log; then
+                echo "⚠️  Database has existing schema - baselining migrations..."
                 
-                # Baseline all existing migrations
-                docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
-                  cd prisma/migrations && 
-                  for migration in */; do
-                    migration_name=\${migration%/}
-                    echo \"Marking \$migration_name as applied...\"
-                    npx prisma migrate resolve --applied \"\$migration_name\" || true
-                  done
-                "
+                # Get list of all migrations
+                MIGRATIONS=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "ls -1 prisma/migrations")
                 
-                echo "✅ Database baselined successfully"
+                # Baseline each migration
+                for migration in $MIGRATIONS; do
+                  if [[ "$migration" != "migration_lock.toml" ]]; then
+                    echo "📝 Marking migration as applied: $migration"
+                    docker run --rm --env-file .env $IMAGE_NAME:latest \
+                      npx prisma migrate resolve --applied "$migration" || true
+                  fi
+                done
+                
+                echo "✅ Database baselined - all existing migrations marked as applied"
               else
-                echo "✅ Fresh database - applying all migrations..."
-                docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
-                echo "✅ All migrations applied"
+                echo "❌ Migration failed with unexpected error"
+                cat /tmp/migration_output.log
+                exit 1
               fi
             fi
 
