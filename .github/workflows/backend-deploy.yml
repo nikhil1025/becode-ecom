@@ -177,12 +177,12 @@ jobs:
             echo "🔍 Checking database migration state..."
             MIGRATION_TABLE_EXISTS=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
               npx prisma db execute --stdin <<'EOF'
-SELECT EXISTS (
-  SELECT FROM information_schema.tables 
-  WHERE table_schema = 'public' 
-  AND table_name = '_prisma_migrations'
-) as exists;
-EOF
+            SELECT EXISTS (
+              SELECT FROM information_schema.tables 
+              WHERE table_schema = 'public' 
+              AND table_name = '_prisma_migrations'
+            ) as exists;
+            EOF
             " 2>&1 | grep -i true || echo "false")
 
             if [[ "$MIGRATION_TABLE_EXISTS" == *"true"* ]]; then
@@ -207,9 +207,9 @@ EOF
               # Check if database has any tables
               TABLES_EXIST=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
                 npx prisma db execute --stdin <<'EOF'
-SELECT COUNT(*) > 0 as has_tables FROM information_schema.tables 
-WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-EOF
+              SELECT COUNT(*) > 0 as has_tables FROM information_schema.tables 
+              WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+              EOF
               " 2>&1 | grep -i true || echo "false")
               
               if [[ "$TABLES_EXIST" == *"true"* ]]; then
