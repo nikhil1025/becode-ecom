@@ -173,14 +173,24 @@ jobs:
 
             echo "🧬 Running Prisma migrations safely..."
 
-            # Apply migrations without resetting - preserves existing data
+            # First check migration status
+            echo "📊 Checking migration status..."
+            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status || true
+
+            # Apply all pending migrations
+            echo "📦 Applying migrations..."
             docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy || {
-              echo "⚠️  Migration failed, checking database state..."
-              # Try to resolve any migration issues
+              echo "❌ Migration deployment failed!"
+              echo "📋 Checking for failed migrations..."
               docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status
+              exit 1
             }
 
             echo "✅ Database migrations applied successfully"
+            
+            # Verify final status
+            echo "📊 Final migration status:"
+            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status
             docker rm -f $CONTAINER_NAME || true
             sleep 2
 
