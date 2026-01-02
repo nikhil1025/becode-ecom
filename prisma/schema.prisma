@@ -140,14 +140,15 @@ model Product {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  variants         ProductVariant[]
-  reviews          Review[]
-  orderItems       OrderItem[]
-  wishlistItems    WishlistItem[]
-  cartItems        CartItem[]
-  exchangeReturns  ReturnItem[]      @relation("ExchangeProducts")
-  featuredProducts FeaturedProduct[]
-  popularProducts  PopularProduct[]
+  variants           ProductVariant[]
+  reviews            Review[]
+  orderItems         OrderItem[]
+  wishlistItems      WishlistItem[]
+  cartItems          CartItem[]
+  exchangeReturns    ReturnItem[]        @relation("ExchangeProducts")
+  featuredProducts   FeaturedProduct[]
+  popularProducts    PopularProduct[]
+  collectionProducts CollectionProduct[]
 
   @@index([isDeleted])
   @@map("products")
@@ -185,10 +186,11 @@ model ProductVariant {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  images     ProductImage[]
-  orderItems OrderItem[]
-  cartItems  CartItem[]
-  reviews    ProductVariantReview[]
+  images             ProductImage[]
+  orderItems         OrderItem[]
+  cartItems          CartItem[]
+  reviews            ProductVariantReview[]
+  collectionProducts CollectionProduct[]
 
   @@index([productId])
   @@index([isActive])
@@ -711,4 +713,69 @@ model AppLogo {
 
   @@unique([type, mode, isActive]) // Ensure only one active logo per type/mode combination
   @@map("app_logos")
+}
+
+// Collections Feature
+
+enum CollectionStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  EXPIRED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model Collection {
+  id              String           @id @default(uuid())
+  name            String
+  slug            String           @unique
+  description     String?          @db.Text
+  bannerImage     String?
+  offerText       String?
+  discountType    DiscountType?
+  discountValue   Float?           @default(0)
+  status          CollectionStatus @default(DRAFT)
+  priority        Int              @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  metaTitle       String?
+  metaDescription String?
+  isDeleted       Boolean          @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  products CollectionProduct[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([priority])
+  @@index([isDeleted])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("collections")
+}
+
+model CollectionProduct {
+  id           String          @id @default(uuid())
+  collectionId String
+  collection   Collection      @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId    String?
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  position     Int             @default(0)
+  isActive     Boolean         @default(true)
+  addedAt      DateTime        @default(now())
+
+  @@unique([collectionId, productId, variantId])
+  @@index([collectionId])
+  @@index([productId])
+  @@index([variantId])
+  @@index([position])
+  @@map("collection_products")
 }

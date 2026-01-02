@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { BrandsModule } from './brands/brands.module';
 import { CartModule } from './cart/cart.module';
 import { CategoriesModule } from './categories/categories.module';
+import { CollectionsModule } from './collections/collections.module';
 import { CommunityModule } from './community/community.module';
 import { ContactModule } from './contact/contact.module';
 import { DeliveryModule } from './delivery/delivery.module';
@@ -45,6 +46,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
     AddressesModule,
     CategoriesModule,
     BrandsModule,
+    CollectionsModule,
     MailModule,
     ContactModule,
     PaymentsModule,
