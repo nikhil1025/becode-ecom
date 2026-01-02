@@ -5,6 +5,7 @@
 ### P3005: Database schema not empty
 
 **Error:**
+
 ```
 The database schema is not empty. Read more about how to baseline an existing production database:
 https://pris.ly/d/migrate-baseline
@@ -13,6 +14,7 @@ https://pris.ly/d/migrate-baseline
 **Cause:** Database has tables but no `_prisma_migrations` table (migration history).
 
 **Solution:**
+
 ```bash
 # Baseline with the latest migration
 LATEST=$(ls -1 prisma/migrations | sort | tail -n 1)
@@ -27,6 +29,7 @@ npx prisma migrate deploy
 ### P3006: Migration failed to apply cleanly
 
 **Error:**
+
 ```
 Migration `<migration-name>` failed to apply cleanly to a temporary database.
 ```
@@ -34,6 +37,7 @@ Migration `<migration-name>` failed to apply cleanly to a temporary database.
 **Cause:** Migration has syntax errors or conflicts with existing schema.
 
 **Solution:**
+
 ```bash
 # Mark the failed migration as rolled back
 npx prisma migrate resolve --rolled-back "<migration-name>"
@@ -50,6 +54,7 @@ npx prisma migrate deploy
 ### P3009: Migrations directory has changed
 
 **Error:**
+
 ```
 migrate found failed migrations in the target database, new migrations will not be applied.
 ```
@@ -57,6 +62,7 @@ migrate found failed migrations in the target database, new migrations will not 
 **Cause:** Existing migrations in the database don't match the migrations directory.
 
 **Solution:**
+
 ```bash
 # List failed migrations
 npx prisma migrate status
@@ -76,6 +82,7 @@ npx prisma migrate deploy
 ### P2021: Table does not exist
 
 **Error:**
+
 ```
 The table `<table>` does not exist in the current database.
 ```
@@ -83,6 +90,7 @@ The table `<table>` does not exist in the current database.
 **Cause:** Migration references a table that doesn't exist yet.
 
 **Solution:**
+
 ```bash
 # Check migration order
 ls -1 prisma/migrations
@@ -99,6 +107,7 @@ npx prisma db push
 ### P1017: Server has closed the connection
 
 **Error:**
+
 ```
 Server has closed the connection
 ```
@@ -106,6 +115,7 @@ Server has closed the connection
 **Cause:** Database connection timeout or wrong connection string.
 
 **Solution:**
+
 ```bash
 # Check DATABASE_URL in .env
 echo $DATABASE_URL
@@ -279,7 +289,7 @@ if npx prisma migrate deploy; then
   echo "✅ Migrations applied successfully"
 else
   echo "⚠️ Migration deployment had warnings"
-  
+
   # Check for P3005 error (baseline needed)
   if npx prisma migrate status 2>&1 | grep -q "P3005"; then
     echo "📝 Baselining database..."
@@ -387,6 +397,7 @@ npx prisma migrate resolve --applied "$LATEST"
 ## Environment-Specific Tips
 
 ### Development
+
 ```bash
 # Use migrate dev (creates and applies migrations)
 npx prisma migrate dev --name <name>
@@ -396,6 +407,7 @@ npx prisma migrate reset --force
 ```
 
 ### Staging
+
 ```bash
 # Use migrate deploy (only applies existing migrations)
 npx prisma migrate deploy
@@ -405,6 +417,7 @@ npx prisma migrate status
 ```
 
 ### Production
+
 ```bash
 # ALWAYS backup first
 # ALWAYS test on staging first
