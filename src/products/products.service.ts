@@ -158,6 +158,25 @@ export class ProductsService {
             where: { status: 'APPROVED' },
             include: { user: { select: { firstName: true, lastName: true } } },
           },
+          collectionProducts: {
+            where: {
+              isActive: true,
+              collection: {
+                startDate: { lte: new Date() },
+                endDate: { gte: new Date() },
+              },
+            },
+            select: {
+              collection: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+            },
+            take: 1,
+          },
         },
       });
 

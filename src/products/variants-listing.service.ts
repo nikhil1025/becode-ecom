@@ -27,7 +27,7 @@ export interface VariantListingItem {
   productName: string;
   productSlug: string;
   sku: string;
-  name: string;
+  variantName: string;
   price: number;
   salePrice?: number | null;
   discount?: number;
@@ -38,6 +38,8 @@ export interface VariantListingItem {
   category: { id: string; name: string; slug: string };
   brand?: { id: string; name: string; slug: string };
   isActive: boolean;
+  isFeatured?: boolean;
+  collectionName?: string | null;
 }
 
 export interface VariantImageDto {
@@ -145,6 +147,7 @@ export class VariantsListingService {
                 id: true,
                 name: true,
                 slug: true,
+                isFeatured: true,
                 category: {
                   select: {
                     id: true,
@@ -158,6 +161,25 @@ export class VariantsListingService {
                     name: true,
                     slug: true,
                   },
+                },
+                collectionProducts: {
+                  where: {
+                    isActive: true,
+                    collection: {
+                      startDate: { lte: new Date() },
+                      endDate: { gte: new Date() },
+                    },
+                  },
+                  select: {
+                    collection: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                      },
+                    },
+                  },
+                  take: 1,
                 },
               },
             },
@@ -179,38 +201,44 @@ export class VariantsListingService {
       ]);
 
       // Transform to listing items
-      const variantListings: VariantListingItem[] = variants.map((variant) => {
-        const primaryImage = variant.images.find((img) => img.isPrimary);
-        const discount =
-          variant.salePrice && variant.price
-            ? Math.round(
-                ((variant.price - variant.salePrice) / variant.price) * 100,
-              )
-            : 0;
+      type VariantWithIncludes = (typeof variants)[number];
+      const variantListings: VariantListingItem[] = variants.map(
+        (variant: VariantWithIncludes) => {
+          const primaryImage = variant.images.find((img) => img.isPrimary);
+          const discount =
+            variant.salePrice && variant.price
+              ? Math.round(
+                  ((variant.price - variant.salePrice) / variant.price) * 100,
+                )
+              : 0;
 
-        return {
-          id: variant.id,
-          productId: variant.product.id,
-          productName: variant.product.name,
-          productSlug: variant.product.slug,
-          sku: variant.sku,
-          name: variant.name,
-          price: variant.salePrice || variant.price,
-          salePrice: variant.salePrice,
-          discount,
-          stockQuantity: variant.stockQuantity,
-          attributes: variant.attributes as Record<string, string | number>,
-          primaryImage: primaryImage?.url || variant.images[0]?.url,
-          images: variant.images.map((img) => ({
-            id: img.id,
-            url: img.url,
-            altText: img.altText || variant.name,
-          })),
-          category: variant.product.category,
-          brand: variant.product.brand || undefined,
-          isActive: variant.isActive,
-        };
-      });
+          return {
+            id: variant.id,
+            productId: variant.product.id,
+            productName: variant.product.name,
+            productSlug: variant.product.slug,
+            sku: variant.sku,
+            variantName: variant.name,
+            price: variant.salePrice || variant.price,
+            salePrice: variant.salePrice,
+            discount,
+            stockQuantity: variant.stockQuantity,
+            attributes: variant.attributes as Record<string, string | number>,
+            primaryImage: primaryImage?.url || variant.images[0]?.url,
+            images: variant.images.map((img) => ({
+              id: img.id,
+              url: img.url,
+              altText: img.altText || variant.name,
+            })),
+            category: variant.product.category,
+            brand: variant.product.brand || undefined,
+            isActive: variant.isActive,
+            isFeatured: variant.product.isFeatured,
+            collectionName:
+              variant.product.collectionProducts?.[0]?.collection?.name || null,
+          };
+        },
+      );
 
       return {
         variants: variantListings,
