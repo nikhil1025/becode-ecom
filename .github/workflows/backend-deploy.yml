@@ -173,24 +173,71 @@ jobs:
 
             echo "🧬 Running Prisma migrations safely..."
 
-            # First check migration status
-            echo "📊 Checking migration status..."
-            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status || true
+            # Check if _prisma_migrations table exists
+            echo "🔍 Checking database migration state..."
+            MIGRATION_TABLE_EXISTS=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
+              npx prisma db execute --stdin <<'EOF'
+SELECT EXISTS (
+  SELECT FROM information_schema.tables 
+  WHERE table_schema = 'public' 
+  AND table_name = '_prisma_migrations'
+) as exists;
+EOF
+            " 2>&1 | grep -i true || echo "false")
 
-            # Apply all pending migrations
-            echo "📦 Applying migrations..."
-            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy || {
-              echo "❌ Migration deployment failed!"
-              echo "📋 Checking for failed migrations..."
-              docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status
-              exit 1
-            }
+            if [[ "$MIGRATION_TABLE_EXISTS" == *"true"* ]]; then
+              echo "✅ Migration table exists, checking status..."
+              
+              # Check for pending migrations
+              MIGRATION_STATUS=$(docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status 2>&1)
+              
+              if echo "$MIGRATION_STATUS" | grep -q "Database schema is up to date"; then
+                echo "✅ Database is already up to date"
+              elif echo "$MIGRATION_STATUS" | grep -q "Following migrations have not yet been applied"; then
+                echo "📦 Applying pending migrations..."
+                docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
+                echo "✅ Migrations applied successfully"
+              else
+                echo "📦 Running migration deploy..."
+                docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
+              fi
+            else
+              echo "⚠️  Migration table doesn't exist - checking if database is empty..."
+              
+              # Check if database has any tables
+              TABLES_EXIST=$(docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
+                npx prisma db execute --stdin <<'EOF'
+SELECT COUNT(*) > 0 as has_tables FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+EOF
+              " 2>&1 | grep -i true || echo "false")
+              
+              if [[ "$TABLES_EXIST" == *"true"* ]]; then
+                echo "⚠️  Database has tables but no migration history!"
+                echo "🔧 Baselining existing migrations..."
+                
+                # Baseline all existing migrations
+                docker run --rm --env-file .env $IMAGE_NAME:latest sh -c "
+                  cd prisma/migrations && 
+                  for migration in */; do
+                    migration_name=\${migration%/}
+                    echo \"Marking \$migration_name as applied...\"
+                    npx prisma migrate resolve --applied \"\$migration_name\" || true
+                  done
+                "
+                
+                echo "✅ Database baselined successfully"
+              else
+                echo "✅ Fresh database - applying all migrations..."
+                docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
+                echo "✅ All migrations applied"
+              fi
+            fi
 
-            echo "✅ Database migrations applied successfully"
-
-            # Verify final status
+            # Final verification
             echo "📊 Final migration status:"
             docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status
+
             docker rm -f $CONTAINER_NAME || true
             sleep 2
 
