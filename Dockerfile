@@ -97,6 +97,10 @@ COPY --from=builder /app/node_modules/@prisma/ ./node_modules/@prisma/
 # Copy built application
 COPY --from=builder /app/dist/ ./dist/
 
+# Copy startup script and set permissions BEFORE switching user
+COPY --from=builder /app/startup.sh ./startup.sh
+RUN chmod +x ./startup.sh
+
 # Create uploads directories with proper permissions
 RUN mkdir -p \
     /app/uploads/products \
@@ -111,10 +115,6 @@ USER nestjs
 
 # Expose backend port
 EXPOSE 3001
-
-# Copy startup script
-COPY --from=builder /app/startup.sh ./startup.sh
-RUN chmod +x ./startup.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
