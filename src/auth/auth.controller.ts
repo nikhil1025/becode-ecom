@@ -103,7 +103,7 @@ export class AuthController {
     return await this.authService.forgotPassword(body.email);
   }
 
-  @Post('profile/reset-password')
+  @Post('reset-password')
   async resetPassword(@Body() body: { token: string; newPassword: string }) {
     return await this.authService.resetPassword(body.token, body.newPassword);
   }

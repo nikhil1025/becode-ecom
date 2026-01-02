@@ -447,6 +447,61 @@ export class AuthService {
     }
   }
 
+  async adminForgotPassword(email: string): Promise<{ message: string }> {
+    try {
+      if (!email) {
+        throw new BadRequestException('Email is required');
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        // Don't reveal if user exists or not for security
+        return {
+          message: 'If that email exists, a password reset link has been sent',
+        };
+      }
+
+      // Check if user has admin or superadmin role
+      if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
+        return {
+          message: 'If that email exists, a password reset link has been sent',
+        };
+      }
+
+      // Generate reset token (valid for 1 hour)
+      const resetToken = this.jwtService.sign(
+        { userId: user.id, type: 'admin-password-reset' },
+        { expiresIn: '1h' },
+      );
+
+      // Send password reset email for admin (non-blocking)
+      this.mailService
+        .sendPasswordResetEmail(user.email, {
+          firstName: user.firstName || 'there',
+          resetToken,
+          expiresIn: '1 hour',
+          isAdmin: true,
+        })
+        .catch((err) =>
+          console.error('Failed to send admin password reset email:', err),
+        );
+
+      return {
+        message: 'If that email exists, a password reset link has been sent',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to process admin password reset request',
+      );
+    }
+  }
+
   async resetPassword(
     token: string,
     newPassword: string,
@@ -470,7 +525,10 @@ export class AuthService {
         throw new UnauthorizedException('Invalid or expired reset token');
       }
 
-      if (payload.type !== 'password-reset') {
+      if (
+        payload.type !== 'password-reset' &&
+        payload.type !== 'admin-password-reset'
+      ) {
         throw new UnauthorizedException('Invalid reset token');
       }
 

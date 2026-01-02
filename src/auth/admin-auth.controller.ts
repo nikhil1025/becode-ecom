@@ -83,4 +83,14 @@ export class AdminAuthController {
       body.newPassword,
     );
   }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: { email: string }) {
+    return await this.authService.adminForgotPassword(body.email);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: { token: string; newPassword: string }) {
+    return await this.authService.resetPassword(body.token, body.newPassword);
+  }
 }

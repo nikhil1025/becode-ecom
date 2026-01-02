@@ -175,9 +175,13 @@ export class MailService {
       firstName: string;
       resetToken: string;
       expiresIn: string;
+      isAdmin?: boolean;
     },
   ): Promise<void> {
-    const resetUrl = `${MAIL_CONFIG.WEBSITE_URL}/reset-password?token=${resetDetails.resetToken}`;
+    const resetPath = resetDetails.isAdmin 
+      ? `/admin/reset-password/${resetDetails.resetToken}`
+      : `/auth/reset-password/${resetDetails.resetToken}`;
+    const resetUrl = `${MAIL_CONFIG.WEBSITE_URL}${resetPath}`;
 
     const content = `
       ${headerTemplate({ title: 'Password Reset Request', emoji: '🔐' })}

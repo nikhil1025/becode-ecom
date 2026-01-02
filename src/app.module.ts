@@ -7,26 +7,27 @@ import { AuthModule } from './auth/auth.module';
 import { BrandsModule } from './brands/brands.module';
 import { CartModule } from './cart/cart.module';
 import { CategoriesModule } from './categories/categories.module';
+import { CommunityModule } from './community/community.module';
 import { ContactModule } from './contact/contact.module';
 import { DeliveryModule } from './delivery/delivery.module';
+import { FeaturedCategoriesModule } from './featured-categories/featured-categories.module';
+import { FeaturedProductsModule } from './featured-products/featured-products.module';
+import { HomeModule } from './home/home.module';
 import { MailModule } from './mail/mail.module';
+import { NavigationModule } from './navigation/navigation.module';
+import { NewsletterModule } from './newsletter/newsletter.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PopularProductsModule } from './popular-products/popular-products.module';
 import { PrismaService } from './prisma.service';
 import { ProductsModule } from './products/products.module';
+import { RefundsModule } from './refunds/refunds.module';
 import { ReturnsModule } from './returns/returns.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SiteContentModule } from './site-content/site-content.module';
-import { WishlistModule } from './wishlist/wishlist.module';
-import { HomeModule } from './home/home.module';
-import { FeaturedProductsModule } from './featured-products/featured-products.module';
-import { PopularProductsModule } from './popular-products/popular-products.module';
-import { FeaturedCategoriesModule } from './featured-categories/featured-categories.module';
-import { NavigationModule } from './navigation/navigation.module';
-import { NewsletterModule } from './newsletter/newsletter.module';
-import { CommunityModule } from './community/community.module';
+import { UsersModule } from './users/users.module';
 import { WalletModule } from './wallet/wallet.module';
-import { RefundsModule } from './refunds/refunds.module';
+import { WishlistModule } from './wishlist/wishlist.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { RefundsModule } from './refunds/refunds.module';
     CommunityModule,
     WalletModule,
     RefundsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
