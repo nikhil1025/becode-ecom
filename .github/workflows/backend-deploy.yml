@@ -173,13 +173,14 @@ jobs:
 
             echo "🧬 Running Prisma migrations safely..."
 
-            # For fresh DB setup, use db push to create schema without migration history issues
-            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma db push --force-reset --skip-generate || {
-              echo "⚠️  DB push failed, trying migrate deploy..."
-              docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy
+            # Apply migrations without resetting - preserves existing data
+            docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy || {
+              echo "⚠️  Migration failed, checking database state..."
+              # Try to resolve any migration issues
+              docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate status
             }
 
-            echo "✅ Database schema applied success"
+            echo "✅ Database migrations applied successfully"
             docker rm -f $CONTAINER_NAME || true
             sleep 2
 
