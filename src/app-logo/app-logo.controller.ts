@@ -15,14 +15,14 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { LogoMode, LogoType } from '@prisma/client';
 import { AdminJwtAuthGuard } from '../auth/admin-jwt-auth.guard';
-import { LocalStorageService } from '../storage/local-storage.service';
+import { S3Service } from '../storage/s3.service';
 import { AppLogoService } from './app-logo.service';
 
 @Controller('app-logo')
 export class AppLogoController {
   constructor(
     private readonly appLogoService: AppLogoService,
-    private readonly storageService: LocalStorageService,
+    private readonly storageService: S3Service,
   ) {}
 
   @Get()
@@ -80,6 +80,7 @@ export class AppLogoController {
       file.buffer,
       'logos',
       extension,
+      file.mimetype,
     );
 
     return this.appLogoService.create({
@@ -120,6 +121,7 @@ export class AppLogoController {
         file.buffer,
         'logos',
         extension,
+        file.mimetype,
       );
       imageUrl = url;
     }
