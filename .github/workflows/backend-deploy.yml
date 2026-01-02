@@ -175,7 +175,7 @@ jobs:
 
             # Try to run migrations, if P3005 error occurs, baseline instead
             echo "📦 Attempting to apply migrations..."
-            
+
             if docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma migrate deploy 2>&1 | tee /tmp/migration_output.log; then
               echo "✅ Migrations applied successfully"
             else
