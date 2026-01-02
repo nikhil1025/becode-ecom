@@ -25,6 +25,7 @@ import { RefundsModule } from './refunds/refunds.module';
 import { ReturnsModule } from './returns/returns.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SiteContentModule } from './site-content/site-content.module';
+import { SocialMediaModule } from './social-media/social-media.module';
 import { UsersModule } from './users/users.module';
 import { WalletModule } from './wallet/wallet.module';
 import { WishlistModule } from './wishlist/wishlist.module';
@@ -59,6 +60,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
     WalletModule,
     RefundsModule,
     UsersModule,
+    SocialMediaModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

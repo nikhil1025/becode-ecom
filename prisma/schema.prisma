@@ -632,3 +632,16 @@ model WalletTransaction {
   @@index([walletId])
   @@map("wallet_transactions")
 }
+
+model SocialMedia {
+  id        String   @id @default(uuid())
+  platform  String // e.g., "Facebook", "Instagram", "Twitter", "LinkedIn"
+  url       String // Social media profile URL
+  icon      String? // Icon name or URL
+  isActive  Boolean  @default(true)
+  order     Int      @default(0) // Display order
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("social_media")
+}
