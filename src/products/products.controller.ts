@@ -65,6 +65,12 @@ export class ProductsController {
     return this.variantsService.getPublicVariantsByProduct(product.id);
   }
 
+  // Public endpoint to get a single variant by ID
+  @Get('variants/:id')
+  async getVariantById(@Param('id') id: string) {
+    return this.variantsService.getVariantById(id);
+  }
+
   // Admin endpoint for full product data with pagination
   @Get('admin/all')
   @UseGuards(AdminJwtAuthGuard, RolesGuard)
