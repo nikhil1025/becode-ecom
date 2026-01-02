@@ -69,14 +69,16 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  orders        Order[]
-  reviews       Review[]
-  addresses     Address[]
-  cart          Cart?
-  wishlistItems WishlistItem[]
-  returns       Return[]
-  wallet        Wallet?
-  refunds       Refund[]
+  orders         Order[]
+  reviews        Review[]
+  addresses      Address[]
+  cart           Cart?
+  wishlistItems  WishlistItem[]
+  returns        Return[]
+  wallet         Wallet?
+  refunds        Refund[]
+  variantReviews ProductVariantReview[] @relation("UserReviews")
+  adminReplies   AdminReviewReply[]     @relation("AdminReplies")
 
   @@map("users")
 }
@@ -186,11 +188,50 @@ model ProductVariant {
   images     ProductImage[]
   orderItems OrderItem[]
   cartItems  CartItem[]
+  reviews    ProductVariantReview[]
 
   @@index([productId])
   @@index([isActive])
   @@index([stockQuantity])
   @@map("product_variants")
+}
+
+model ProductVariantReview {
+  id                 String         @id @default(uuid())
+  variantId          String
+  variant            ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User           @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
+  rating             Int // 1-5 stars
+  comment            String?
+  images             String[] // Array of S3 URLs for review images
+  isVerifiedPurchase Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  adminReply AdminReviewReply?
+
+  @@index([variantId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+  @@map("product_variant_reviews")
+}
+
+model AdminReviewReply {
+  id        String               @id @default(uuid())
+  reviewId  String               @unique
+  review    ProductVariantReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  adminId   String
+  admin     User                 @relation("AdminReplies", fields: [adminId], references: [id])
+  replyText String
+  isVisible Boolean              @default(true) // Can be toggled by admin, but always visible to review author
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([reviewId])
+  @@index([adminId])
+  @@map("admin_review_replies")
 }
 
 model Order {

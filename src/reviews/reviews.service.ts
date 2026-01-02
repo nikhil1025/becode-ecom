@@ -451,4 +451,404 @@ export class ReviewsService {
       // Don't throw here to avoid breaking the main flow
     }
   }
+
+  // Product Variant Reviews
+  async createVariantReview(
+    userId: string,
+    data: {
+      variantId: string;
+      rating: number;
+      comment?: string;
+      images?: string[];
+    },
+  ) {
+    // Validate rating
+    if (data.rating < 1 || data.rating > 5) {
+      throw new BadRequestException('Rating must be between 1 and 5');
+    }
+
+    // Check if variant exists
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: data.variantId },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Product variant not found');
+    }
+
+    // Check if user has purchased this variant
+    const hasPurchased = await this.prisma.orderItem.findFirst({
+      where: {
+        variantId: data.variantId,
+        order: {
+          userId,
+          status: { in: ['DELIVERED', 'CONFIRMED'] },
+        },
+      },
+    });
+
+    // Check if user already reviewed this variant
+    const existingReview = await this.prisma.productVariantReview.findFirst({
+      where: {
+        userId,
+        variantId: data.variantId,
+      },
+    });
+
+    if (existingReview) {
+      throw new BadRequestException(
+        'You have already reviewed this product variant',
+      );
+    }
+
+    return this.prisma.productVariantReview.create({
+      data: {
+        userId,
+        variantId: data.variantId,
+        rating: data.rating,
+        comment: data.comment,
+        images: data.images || [],
+        isVerifiedPurchase: !!hasPurchased,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+          },
+        },
+        variant: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        adminReply: true,
+      },
+    });
+  }
+
+  async getVariantReviews(
+    variantId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      rating?: number;
+      sortBy?: 'recent' | 'rating';
+    } = {},
+  ) {
+    const page = options.page || 1;
+    const limit = options.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const where: any = { variantId };
+    if (options.rating) {
+      where.rating = options.rating;
+    }
+
+    let orderBy: any = { createdAt: 'desc' };
+    if (options.sortBy === 'rating') {
+      orderBy = { rating: 'desc' };
+    }
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.productVariantReview.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
+          },
+          adminReply: true,
+        },
+      }),
+      this.prisma.productVariantReview.count({ where }),
+    ]);
+
+    return {
+      reviews,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getVariantReviewStats(variantId: string) {
+    const reviews = await this.prisma.productVariantReview.findMany({
+      where: { variantId },
+      select: { rating: true },
+    });
+
+    if (reviews.length === 0) {
+      return {
+        averageRating: 0,
+        totalReviews: 0,
+        ratingDistribution: {
+          1: 0,
+          2: 0,
+          3: 0,
+          4: 0,
+          5: 0,
+        },
+      };
+    }
+
+    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = totalRating / reviews.length;
+
+    const ratingDistribution = {
+      1: reviews.filter((r) => r.rating === 1).length,
+      2: reviews.filter((r) => r.rating === 2).length,
+      3: reviews.filter((r) => r.rating === 3).length,
+      4: reviews.filter((r) => r.rating === 4).length,
+      5: reviews.filter((r) => r.rating === 5).length,
+    };
+
+    return {
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalReviews: reviews.length,
+      ratingDistribution,
+    };
+  }
+
+  async updateVariantReview(
+    reviewId: string,
+    userId: string,
+    data: {
+      rating?: number;
+      comment?: string;
+      images?: string[];
+    },
+  ) {
+    const review = await this.prisma.productVariantReview.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+
+    if (review.userId !== userId) {
+      throw new BadRequestException('You can only update your own reviews');
+    }
+
+    if (data.rating && (data.rating < 1 || data.rating > 5)) {
+      throw new BadRequestException('Rating must be between 1 and 5');
+    }
+
+    return this.prisma.productVariantReview.update({
+      where: { id: reviewId },
+      data: {
+        ...(data.rating && { rating: data.rating }),
+        ...(data.comment !== undefined && { comment: data.comment }),
+        ...(data.images && { images: data.images }),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+          },
+        },
+        adminReply: true,
+      },
+    });
+  }
+
+  async deleteVariantReview(reviewId: string, userId: string) {
+    const review = await this.prisma.productVariantReview.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+
+    if (review.userId !== userId) {
+      throw new BadRequestException('You can only delete your own reviews');
+    }
+
+    await this.prisma.productVariantReview.delete({
+      where: { id: reviewId },
+    });
+
+    return { message: 'Review deleted successfully' };
+  }
+
+  // Admin functionality for variant reviews
+  async getAllVariantReviews(
+    options: {
+      page?: number;
+      limit?: number;
+      variantId?: string;
+      rating?: number;
+    } = {},
+  ) {
+    const page = options.page || 1;
+    const limit = options.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (options.variantId) {
+      where.variantId = options.variantId;
+    }
+    if (options.rating) {
+      where.rating = options.rating;
+    }
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.productVariantReview.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              avatar: true,
+            },
+          },
+          variant: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          adminReply: {
+            include: {
+              admin: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.productVariantReview.count({ where }),
+    ]);
+
+    return {
+      reviews,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async createAdminReply(reviewId: string, adminId: string, replyText: string) {
+    const review = await this.prisma.productVariantReview.findUnique({
+      where: { id: reviewId },
+      include: { adminReply: true },
+    });
+
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+
+    if (review.adminReply) {
+      throw new BadRequestException(
+        'Admin reply already exists for this review',
+      );
+    }
+
+    return this.prisma.adminReviewReply.create({
+      data: {
+        reviewId,
+        adminId,
+        replyText,
+        isVisible: true,
+      },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateAdminReply(
+    replyId: string,
+    data: {
+      replyText?: string;
+      isVisible?: boolean;
+    },
+  ) {
+    const reply = await this.prisma.adminReviewReply.findUnique({
+      where: { id: replyId },
+    });
+
+    if (!reply) {
+      throw new NotFoundException('Admin reply not found');
+    }
+
+    return this.prisma.adminReviewReply.update({
+      where: { id: replyId },
+      data,
+      include: {
+        admin: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteAdminReply(replyId: string) {
+    const reply = await this.prisma.adminReviewReply.findUnique({
+      where: { id: replyId },
+    });
+
+    if (!reply) {
+      throw new NotFoundException('Admin reply not found');
+    }
+
+    await this.prisma.adminReviewReply.delete({
+      where: { id: replyId },
+    });
+
+    return { message: 'Admin reply deleted successfully' };
+  }
+
+  async toggleReplyVisibility(replyId: string, isVisible: boolean) {
+    return this.updateAdminReply(replyId, { isVisible });
+  }
 }
