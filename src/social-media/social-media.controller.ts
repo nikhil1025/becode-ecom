@@ -1,15 +1,15 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   UseGuards,
 } from '@nestjs/common';
-import { SocialMediaService } from './social-media.service';
 import { AdminJwtAuthGuard } from '../auth/admin-jwt-auth.guard';
+import { SocialMediaService } from './social-media.service';
 
 @Controller('social-media')
 export class SocialMediaController {
