@@ -112,10 +112,13 @@ USER nestjs
 # Expose backend port
 EXPOSE 3001
 
+# Copy startup script
+COPY --from=builder /app/startup.sh ./startup.sh
+RUN chmod +x ./startup.sh
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD node -e "require('http').get('https://api.themingkart.com/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
-# Start command - ONLY start the app, NO Prisma commands
-# Prisma migrations are handled during deploy step, NOT in container startup
-CMD ["node", "dist/src/main"]
+# Use startup script that handles Prisma Client regeneration and migrations
+CMD ["./startup.sh"]

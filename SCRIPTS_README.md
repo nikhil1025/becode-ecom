@@ -5,6 +5,7 @@
 ### 🚀 Deployment Scripts
 
 #### `deploy.sh`
+
 Main production deployment script with health checks and rollback capability.
 
 ```bash
@@ -22,7 +23,9 @@ Main production deployment script with health checks and rollback capability.
 ```
 
 #### `startup.sh`
+
 Container startup script that runs:
+
 1. Prisma Client generation
 2. Database migrations
 3. Application startup
@@ -30,7 +33,9 @@ Container startup script that runs:
 **Note:** This runs automatically in the Docker container.
 
 #### `prisma-migrate-safe.sh`
+
 Safe migration script used during deployment. Handles:
+
 - Prisma Client regeneration
 - Migration status checking
 - Migration deployment
@@ -38,6 +43,7 @@ Safe migration script used during deployment. Handles:
 ### 🔧 Fix & Verification Scripts
 
 #### `fix-production.sh` ⭐
+
 **Use this to fix the current production issue!**
 
 Quick fix script that regenerates Prisma Client in the running container.
@@ -48,11 +54,13 @@ Quick fix script that regenerates Prisma Client in the running container.
 ```
 
 This fixes:
+
 - "Database operation failed" errors
 - Missing model errors (socialMedia, appLogo)
 - Outdated Prisma Client issues
 
 #### `verify-production.sh`
+
 Tests production API endpoints to verify they're working.
 
 ```bash
@@ -64,6 +72,7 @@ Tests production API endpoints to verify they're working.
 ```
 
 Checks:
+
 - Health endpoint
 - Social media public endpoint
 - App logo public endpoint
@@ -72,6 +81,7 @@ Checks:
 ## Quick Start
 
 ### First Time Setup
+
 ```bash
 # Make scripts executable
 chmod +x *.sh
@@ -85,6 +95,7 @@ cp .env.example .env
 ```
 
 ### Fix Production Issue
+
 ```bash
 # On production server
 ssh production-server
@@ -93,6 +104,7 @@ cd /path/to/bcode-ecom
 ```
 
 ### Verify Everything Works
+
 ```bash
 ./verify-production.sh https://api.themingkart.com
 ```
@@ -100,13 +112,17 @@ cd /path/to/bcode-ecom
 ## Common Issues
 
 ### Issue: "Database operation failed"
+
 **Solution:** Run `./fix-production.sh` on production
 
 ### Issue: Migrations failing
+
 **Solution:** Check logs with `./deploy.sh logs`
 
 ### Issue: Container won't start
-**Solution:** 
+
+**Solution:**
+
 ```bash
 docker logs bcode-backend
 ./deploy.sh rollback  # If needed
@@ -121,6 +137,7 @@ docker logs bcode-backend
 ## Support
 
 If you need help:
+
 1. Check the logs: `./deploy.sh logs`
 2. Verify migrations: `npx prisma migrate status`
 3. Check database: `sudo -u postgres psql -d ecommerce_db -c '\dt'`

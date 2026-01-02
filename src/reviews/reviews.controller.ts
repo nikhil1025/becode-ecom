@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { $Enums, ReviewStatus } from '@prisma/client';
+import { AdminJwtAuthGuard } from '../auth/admin-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -201,7 +202,7 @@ export class ReviewsController {
 
   // Admin endpoints for variant reviews
   @Get('admin/variant-reviews')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
   async getAllVariantReviews(
     @Query('page') page = '1',
@@ -218,7 +219,7 @@ export class ReviewsController {
   }
 
   @Post('admin/reply')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
   async createAdminReply(
     @Request() req: { user: { userId: string } },
@@ -232,7 +233,7 @@ export class ReviewsController {
   }
 
   @Put('admin/reply/:replyId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
   async updateAdminReply(
     @Param('replyId') replyId: string,
@@ -242,14 +243,14 @@ export class ReviewsController {
   }
 
   @Delete('admin/reply/:replyId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
   async deleteAdminReply(@Param('replyId') replyId: string) {
     return this.reviewsService.deleteAdminReply(replyId);
   }
 
   @Put('admin/reply/:replyId/toggle-visibility')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(AdminJwtAuthGuard, RolesGuard)
   @Roles($Enums.UserRole.ADMIN, $Enums.UserRole.SUPERADMIN)
   async toggleReplyVisibility(
     @Param('replyId') replyId: string,
