@@ -637,11 +637,37 @@ model SocialMedia {
   id        String   @id @default(uuid())
   platform  String // e.g., "Facebook", "Instagram", "Twitter", "LinkedIn"
   url       String // Social media profile URL
-  icon      String? // Icon name or URL
+  icon      String? // Icon name from lucide-react
   isActive  Boolean  @default(true)
   order     Int      @default(0) // Display order
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("social_media")
+}
+
+enum LogoType {
+  HORIZONTAL
+  SQUARE
+  HEADER
+  FOOTER
+  CARD
+}
+
+enum LogoMode {
+  DARK
+  LIGHT
+}
+
+model AppLogo {
+  id        String   @id @default(uuid())
+  type      LogoType // horizontal, square, header, footer, card
+  mode      LogoMode // dark or light
+  imageUrl  String // Path to the uploaded logo
+  isActive  Boolean  @default(true) // Only one logo per type/mode can be active
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, mode, isActive]) // Ensure only one active logo per type/mode combination
+  @@map("app_logos")
 }

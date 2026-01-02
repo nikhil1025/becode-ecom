@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AddressesModule } from './addresses/addresses.module';
+import { AppLogoModule } from './app-logo/app-logo.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -61,6 +62,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
     RefundsModule,
     UsersModule,
     SocialMediaModule,
+    AppLogoModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

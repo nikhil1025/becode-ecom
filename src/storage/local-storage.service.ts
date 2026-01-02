@@ -17,7 +17,14 @@ export class LocalStorageService {
 
   private async ensureUploadDir() {
     try {
-      const dirs = ['avatars', 'products', 'brands', 'categories', 'returns'];
+      const dirs = [
+        'avatars',
+        'products',
+        'brands',
+        'categories',
+        'returns',
+        'logos',
+      ];
       for (const dir of dirs) {
         await fs.mkdir(path.join(this.uploadDir, dir), { recursive: true });
       }
