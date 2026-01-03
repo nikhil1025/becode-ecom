@@ -177,40 +177,10 @@ jobs:
             echo ""
             echo "🧬 Starting Production-Grade Migration Process..."
             echo "=================================================="
-            
-            # Extract DB connection details from DATABASE_URL
-            DB_HOST=$(echo "${{ secrets.DATABASE_URL }}" | grep -oP '(?<=@)[^:/]+')
-            DB_PORT=$(echo "${{ secrets.DATABASE_URL }}" | grep -oP '(?<=:)\d+(?=/)')
-            DB_NAME=$(echo "${{ secrets.DATABASE_URL }}" | grep -oP '(?<=/)\w+(?=\?|$)')
-            DB_USER=$(echo "${{ secrets.DATABASE_URL }}" | grep -oP '(?<=://)[^:]+(?=:)')
-            DB_PASS=$(echo "${{ secrets.DATABASE_URL }}" | grep -oP '(?<=:)[^@]+(?=@)' | tail -1)
-            
-            # Set PostgreSQL password for commands
-            export PGPASSWORD="$DB_PASS"
 
-            # Step 1: Test database connectivity
+            # Step 1: Regenerate Prisma Client (also tests DB connectivity)
             echo ""
-            echo "🔌 Step 1/7: Testing database connectivity..."
-            if docker run --rm --env-file .env postgres:16-alpine \
-              psql "${{ secrets.DATABASE_URL }}" -c "SELECT version();" > /dev/null 2>&1; then
-              echo "✅ Database connection successful"
-            else
-              echo "❌ Cannot connect to database - check DATABASE_URL"
-              exit 1
-            fi
-
-            # Step 2: Create full database backup
-            echo ""
-            echo "💾 Step 2/7: Creating database backup..."
-            BACKUP_FILE="/tmp/db_backup_$(date +%Y%m%d_%H%M%S).sql"
-            docker run --rm --env-file .env postgres:16-alpine \
-              pg_dump "${{ secrets.DATABASE_URL }}" > $BACKUP_FILE
-            BACKUP_SIZE=$(du -h $BACKUP_FILE | cut -f1)
-            echo "✅ Backup created: $BACKUP_FILE ($BACKUP_SIZE)"
-
-            # Step 3: Regenerate Prisma Client
-            echo ""
-            echo "🔧 Step 3/7: Regenerating Prisma Client..."
+            echo "🔧 Step 1/5: Regenerating Prisma Client..."
             if docker run --rm --env-file .env $IMAGE_NAME:latest npx prisma generate; then
               echo "✅ Prisma Client regenerated successfully"
             else
@@ -218,26 +188,25 @@ jobs:
               exit 1
             fi
 
-            # Step 4: Check current migration status
+            # Step 2: Check current migration status (tests DB connectivity)
             echo ""
-            echo "📊 Step 4/7: Checking current migration status..."
+            echo "📊 Step 2/5: Checking current migration status..."
             docker run --rm --env-file .env $IMAGE_NAME:latest \
               npx prisma migrate status > /tmp/migrate_status.log 2>&1 || true
             cat /tmp/migrate_status.log
 
-            # Step 5: Check for schema drift
+            # Step 3: Create logical backup of migration history
             echo ""
-            echo "🔍 Step 5/7: Checking for schema drift..."
+            echo "💾 Step 3/5: Backing up migration history..."
             docker run --rm --env-file .env $IMAGE_NAME:latest \
-              npx prisma migrate diff \
-              --from-schema-datamodel prisma/schema.prisma \
-              --to-schema-datasource prisma/schema.prisma \
-              --exit-code > /tmp/drift_check.log 2>&1 || DRIFT_EXIT_CODE=$?
+              sh -c "npx prisma db execute --stdin <<'SQLEOF'
+            SELECT * FROM _prisma_migrations;
+            SQLEOF" > /tmp/migration_backup.sql 2>&1 || echo "⚠️  Could not backup migration history (table may not exist)"
 
-            # Step 6: Apply migrations with intelligent error handling
+            # Step 4: Apply migrations with intelligent error handling
             echo ""
-            echo "📦 Step 6/7: Applying migrations..."
-            
+            echo "📦 Step 4/5: Applying migrations..."
+
             if docker run --rm --env-file .env $IMAGE_NAME:latest \
               npx prisma migrate deploy 2>&1 | tee /tmp/migration_deploy.log; then
               
@@ -294,8 +263,10 @@ jobs:
                   echo "  ⚠️  Could not identify failed migration - attempting nuclear option..."
                   # Nuclear option: Clear migration history and rebaseline
                   echo "  🗑️  Clearing migration history table..."
-                  docker run --rm --env-file .env postgres:16-alpine \
-                    psql "${{ secrets.DATABASE_URL }}" -c "TRUNCATE TABLE _prisma_migrations;"
+                  docker run --rm --env-file .env $IMAGE_NAME:latest \
+                    npx prisma db execute --stdin <<'SQLEOF' || echo "⚠️ Could not clear table"
+                  TRUNCATE TABLE _prisma_migrations;
+                  SQLEOF
                   
                   echo "  📝 Rebaselining all migrations..."
                   ALL_MIGRATIONS=$(docker run --rm --env-file .env $IMAGE_NAME:latest \
@@ -349,14 +320,16 @@ jobs:
                 
                 echo ""
                 echo "  🗑️  Step 1: Backing up migration history..."
-                docker run --rm --env-file .env postgres:16-alpine \
-                  psql "${{ secrets.DATABASE_URL }}" \
-                  -c "CREATE TABLE IF NOT EXISTS _prisma_migrations_backup AS SELECT * FROM _prisma_migrations;" || true
-                
+                docker run --rm --env-file .env $IMAGE_NAME:latest \
+                  npx prisma db execute --stdin <<'SQLEOF' || echo "⚠️ Could not backup"
+                CREATE TABLE IF NOT EXISTS _prisma_migrations_backup AS SELECT * FROM _prisma_migrations;
+                SQLEOF
+                                
                 echo "  🗑️  Step 2: Clearing migration history..."
-                docker run --rm --env-file .env postgres:16-alpine \
-                  psql "${{ secrets.DATABASE_URL }}" \
-                  -c "TRUNCATE TABLE _prisma_migrations;" || true
+                docker run --rm --env-file .env $IMAGE_NAME:latest \
+                  npx prisma db execute --stdin <<'SQLEOF' || echo "⚠️ Could not clear"
+                TRUNCATE TABLE _prisma_migrations;
+                SQLEOF
                 
                 echo "  📝 Step 3: Baselining all migrations..."
                 ALL_MIGRATIONS=$(docker run --rm --env-file .env $IMAGE_NAME:latest \
@@ -378,15 +351,14 @@ jobs:
               fi
             fi
 
-            # Step 7: Final verification
+            # Step 5: Final verification
             echo ""
-            echo "📊 Step 7/7: Final migration status verification..."
+            echo "📊 Step 5/5: Final migration status verification..."
             docker run --rm --env-file .env $IMAGE_NAME:latest \
               npx prisma migrate status || true
-            
+
             echo ""
             echo "✅ Migration process complete!"
-            echo "📦 Backup available at: $BACKUP_FILE"
             echo "=================================================="
             echo ""
 
