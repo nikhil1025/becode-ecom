@@ -199,9 +199,8 @@ jobs:
             echo ""
             echo "💾 Step 3/5: Backing up migration history..."
             docker run --rm --env-file .env $IMAGE_NAME:latest \
-              sh -c "npx prisma db execute --stdin <<'SQLEOF'
-            SELECT * FROM _prisma_migrations;
-            SQLEOF" > /tmp/migration_backup.sql 2>&1 || echo "⚠️  Could not backup migration history (table may not exist)"
+              sh -c "echo 'SELECT * FROM _prisma_migrations;' | npx prisma db execute --stdin" \
+              > /tmp/migration_backup.sql 2>&1 || echo "⚠️  Could not backup migration history (table may not exist)"
 
             # Step 4: Apply migrations with intelligent error handling
             echo ""
@@ -264,9 +263,8 @@ jobs:
                   # Nuclear option: Clear migration history and rebaseline
                   echo "  🗑️  Clearing migration history table..."
                   docker run --rm --env-file .env $IMAGE_NAME:latest \
-                    npx prisma db execute --stdin <<'SQLEOF' || echo "⚠️ Could not clear table"
-                  TRUNCATE TABLE _prisma_migrations;
-                  SQLEOF
+                    sh -c "echo 'TRUNCATE TABLE _prisma_migrations;' | npx prisma db execute --stdin" \
+                    || echo "⚠️ Could not clear table"
                   
                   echo "  📝 Rebaselining all migrations..."
                   ALL_MIGRATIONS=$(docker run --rm --env-file .env $IMAGE_NAME:latest \
@@ -321,15 +319,13 @@ jobs:
                 echo ""
                 echo "  🗑️  Step 1: Backing up migration history..."
                 docker run --rm --env-file .env $IMAGE_NAME:latest \
-                  npx prisma db execute --stdin <<'SQLEOF' || echo "⚠️ Could not backup"
-                CREATE TABLE IF NOT EXISTS _prisma_migrations_backup AS SELECT * FROM _prisma_migrations;
-                SQLEOF
-                                
+                  sh -c "echo 'CREATE TABLE IF NOT EXISTS _prisma_migrations_backup AS SELECT * FROM _prisma_migrations;' | npx prisma db execute --stdin" \
+                  || echo "⚠️ Could not backup"
+                
                 echo "  🗑️  Step 2: Clearing migration history..."
                 docker run --rm --env-file .env $IMAGE_NAME:latest \
-                  npx prisma db execute --stdin <<'SQLEOF' || echo "⚠️ Could not clear"
-                TRUNCATE TABLE _prisma_migrations;
-                SQLEOF
+                  sh -c "echo 'TRUNCATE TABLE _prisma_migrations;' | npx prisma db execute --stdin" \
+                  || echo "⚠️ Could not clear"
                 
                 echo "  📝 Step 3: Baselining all migrations..."
                 ALL_MIGRATIONS=$(docker run --rm --env-file .env $IMAGE_NAME:latest \
