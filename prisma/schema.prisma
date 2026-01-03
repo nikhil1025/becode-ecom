@@ -711,7 +711,7 @@ model AppLogo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([type, mode, isActive]) // Ensure only one active logo per type/mode combination
+  @@index([type, mode, isActive]) // Index for querying active logos
   @@map("app_logos")
 }
 

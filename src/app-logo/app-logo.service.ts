@@ -70,15 +70,17 @@ export class AppLogoService {
       throw new NotFoundException('Logo not found');
     }
 
-    // If setting as active, deactivate other logos of the same type and mode
-    if (data.isActive === true) {
-      const type = data.type || logo.type;
-      const mode = data.mode || logo.mode;
+    // Determine the final type and mode after update
+    const finalType = data.type || logo.type;
+    const finalMode = data.mode || logo.mode;
+    const finalIsActive = data.isActive !== undefined ? data.isActive : logo.isActive;
 
+    // If this logo will be active, deactivate other logos of the same type and mode
+    if (finalIsActive) {
       await this.prisma.appLogo.updateMany({
         where: {
-          type,
-          mode,
+          type: finalType,
+          mode: finalMode,
           isActive: true,
           id: { not: id },
         },
