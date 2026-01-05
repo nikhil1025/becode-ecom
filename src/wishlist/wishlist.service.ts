@@ -24,16 +24,13 @@ export class WishlistService {
             include: {
               category: true,
               brand: true,
-              variants: {
-                where: { isActive: true },
+            },
+          },
+          variant: {
+            include: {
+              images: {
+                where: { isPrimary: true },
                 take: 1,
-                include: {
-                  images: {
-                    where: { isPrimary: true },
-                    take: 1,
-                  },
-                },
-                orderBy: { createdAt: 'asc' },
               },
             },
           },
@@ -52,7 +49,11 @@ export class WishlistService {
     }
   }
 
-  async addToWishlist(userId: string, productId: string): Promise<any> {
+  async addToWishlist(
+    userId: string,
+    productId: string,
+    variantId?: string,
+  ): Promise<any> {
     try {
       if (!userId) {
         throw new BadRequestException('User ID is required');
@@ -70,40 +71,59 @@ export class WishlistService {
         throw new NotFoundException('Product not found');
       }
 
+      // If variantId provided, check if it exists
+      if (variantId) {
+        const variant = await this.prisma.productVariant.findUnique({
+          where: { id: variantId },
+        });
+
+        if (!variant) {
+          throw new NotFoundException('Variant not found');
+        }
+
+        if (variant.productId !== productId) {
+          throw new BadRequestException(
+            'Variant does not belong to this product',
+          );
+        }
+      }
+
       // Check if already in wishlist
-      const existingItem = await this.prisma.wishlistItem.findUnique({
+      const existingItem = await this.prisma.wishlistItem.findFirst({
         where: {
-          userId_productId: {
-            userId,
-            productId,
-          },
+          userId,
+          productId,
+          variantId: variantId || null,
         },
       });
 
       if (existingItem) {
-        throw new ConflictException('Product already in wishlist');
+        throw new ConflictException('Item already in wishlist');
       }
 
       const wishlistItem = await this.prisma.wishlistItem.create({
         data: {
           userId,
           productId,
+          variantId: variantId || null,
         },
         include: {
           product: {
             include: {
-              variants: {
-                where: { isActive: true },
-                take: 1,
+              category: true,
+              brand: true,
+            },
+          },
+          variant: variantId
+            ? {
                 include: {
                   images: {
                     where: { isPrimary: true },
                     take: 1,
                   },
                 },
-              },
-            },
-          },
+              }
+            : undefined,
         },
       });
 
@@ -187,7 +207,8 @@ export class WishlistService {
   async isInWishlist(
     userId: string,
     productId: string,
-  ): Promise<{ inWishlist: boolean }> {
+    variantId?: string,
+  ): Promise<{ inWishlist: boolean; itemId?: string }> {
     try {
       if (!userId) {
         throw new BadRequestException('User ID is required');
@@ -196,16 +217,15 @@ export class WishlistService {
         throw new BadRequestException('Product ID is required');
       }
 
-      const item = await this.prisma.wishlistItem.findUnique({
+      const item = await this.prisma.wishlistItem.findFirst({
         where: {
-          userId_productId: {
-            userId,
-            productId,
-          },
+          userId,
+          productId,
+          variantId: variantId || null,
         },
       });
 
-      return { inWishlist: !!item };
+      return { inWishlist: !!item, itemId: item?.id };
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;

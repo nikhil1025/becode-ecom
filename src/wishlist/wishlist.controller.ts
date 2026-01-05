@@ -1,9 +1,11 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   Param,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -26,8 +28,13 @@ export class WishlistController {
   async addToWishlist(
     @Request() req: { user: { userId: string } },
     @Param('productId') productId: string,
+    @Body() body: { variantId?: string },
   ): Promise<any> {
-    return this.wishlistService.addToWishlist(req.user.userId, productId);
+    return this.wishlistService.addToWishlist(
+      req.user.userId,
+      productId,
+      body.variantId,
+    );
   }
 
   @Delete(':itemId')
@@ -49,7 +56,12 @@ export class WishlistController {
   async checkWishlist(
     @Request() req: { user: { userId: string } },
     @Param('productId') productId: string,
-  ): Promise<{ inWishlist: boolean }> {
-    return this.wishlistService.isInWishlist(req.user.userId, productId);
+    @Query('variantId') variantId?: string,
+  ): Promise<{ inWishlist: boolean; itemId?: string }> {
+    return this.wishlistService.isInWishlist(
+      req.user.userId,
+      productId,
+      variantId,
+    );
   }
 }
