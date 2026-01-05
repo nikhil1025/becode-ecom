@@ -36,6 +36,12 @@ export class CategoriesController {
     return this.categoriesService.searchCategories(query);
   }
 
+  // Public endpoint for single category by slug
+  @Get('slug/:slug')
+  async findBySlug(@Param('slug') slug: string): Promise<any> {
+    return this.categoriesService.findBySlug(slug);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<any> {
     return this.categoriesService.findOne(id);

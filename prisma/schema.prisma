@@ -85,34 +85,53 @@ model User {
 }
 
 model Category {
-  id          String     @id @default(uuid())
-  name        String
-  slug        String     @unique
-  description String?
-  image       String?
-  parentId    String?
-  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryHierarchy")
-  position    Int        @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id              String     @id @default(uuid())
+  name            String
+  slug            String     @unique
+  description     String?
+  image           String?
+  parentId        String?
+  parent          Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children        Category[] @relation("CategoryHierarchy")
+  position        Int        @default(0)
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  canonicalUrl    String?
+  ogImage         String?
+  noIndex         Boolean    @default(false)
+  noFollow        Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   products           Product[]
   featuredCategories FeaturedCategory[]
 
+  @@index([slug])
+  @@index([noIndex])
   @@map("categories")
 }
 
 model Brand {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  slug      String   @unique
-  logo      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(uuid())
+  name            String   @unique
+  slug            String   @unique
+  logo            String?
+  description     String?  @db.Text
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  canonicalUrl    String?
+  ogImage         String?
+  noIndex         Boolean  @default(false)
+  noFollow        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   products Product[]
 
+  @@index([slug])
+  @@index([noIndex])
   @@map("brands")
 }
 
@@ -136,6 +155,11 @@ model Product {
   reviewCount      Int           @default(0)
   metaTitle        String?
   metaDescription  String?
+  metaKeywords     String?
+  canonicalUrl     String?
+  ogImage          String?
+  noIndex          Boolean       @default(false)
+  noFollow         Boolean       @default(false)
   isDeleted        Boolean       @default(false)
   deletedAt        DateTime?
   createdAt        DateTime      @default(now())
@@ -152,6 +176,9 @@ model Product {
   collectionProducts CollectionProduct[]
 
   @@index([isDeleted])
+  @@index([slug])
+  @@index([status])
+  @@index([noIndex])
   @@map("products")
 }
 
@@ -431,19 +458,27 @@ enum TrackingStatus {
 }
 
 model SiteContent {
-  id            String        @id @default(uuid())
-  type          ContentType   @unique
-  slug          String        @unique
-  title         String
-  content       String        @db.Text
-  status        ContentStatus @default(DRAFT)
-  lastUpdatedBy String?
-  metadata      Json? // For FAQs: [{question: "", answer: ""}]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  type            ContentType   @unique
+  slug            String        @unique
+  title           String
+  content         String        @db.Text
+  status          ContentStatus @default(DRAFT)
+  lastUpdatedBy   String?
+  metadata        Json? // For FAQs: [{question: "", answer: ""}]
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  canonicalUrl    String?
+  ogImage         String?
+  noIndex         Boolean       @default(false)
+  noFollow        Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([slug])
   @@index([status])
+  @@index([noIndex])
   @@map("site_content")
 }
 
@@ -748,6 +783,11 @@ model Collection {
   endDate         DateTime?
   metaTitle       String?
   metaDescription String?
+  metaKeywords    String?
+  canonicalUrl    String?
+  ogImage         String?
+  noIndex         Boolean          @default(false)
+  noFollow        Boolean          @default(false)
   isDeleted       Boolean          @default(false)
   deletedAt       DateTime?
   createdAt       DateTime         @default(now())
@@ -761,6 +801,7 @@ model Collection {
   @@index([isDeleted])
   @@index([startDate])
   @@index([endDate])
+  @@index([noIndex])
   @@map("collections")
 }
 
@@ -815,4 +856,139 @@ model ContactReply {
   @@index([adminId])
   @@index([sentAt])
   @@map("contact_replies")
+}
+
+// ============================================
+// SEO MODELS
+// ============================================
+
+model SEOConfig {
+  id                 String   @id @default(uuid())
+  siteName           String
+  siteDescription    String   @db.Text
+  siteUrl            String
+  defaultOgImage     String?
+  twitterHandle      String?
+  googleAnalyticsId  String?
+  googleTagManagerId String?
+  facebookPixelId    String?
+  facebookAppId      String?
+  twitterCardType    String   @default("summary_large_image")
+  defaultLocale      String   @default("en_US")
+  robotsTxt          String?  @db.Text
+  customHeadScripts  String?  @db.Text
+  customBodyScripts  String?  @db.Text
+  enableSitemap      Boolean  @default(true)
+  sitemapChangeFreq  String   @default("daily")
+  sitemapPriority    Float    @default(0.7)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("seo_config")
+}
+
+enum RedirectType {
+  PERMANENT_301
+  TEMPORARY_302
+  SEE_OTHER_303
+  TEMPORARY_REDIRECT_307
+  PERMANENT_REDIRECT_308
+}
+
+model SEORedirect {
+  id          String       @id @default(uuid())
+  fromPath    String       @unique
+  toPath      String
+  type        RedirectType @default(PERMANENT_301)
+  statusCode  Int          @default(301)
+  isActive    Boolean      @default(true)
+  description String?
+  hitCount    Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([fromPath])
+  @@index([isActive])
+  @@map("seo_redirects")
+}
+
+model URLMonitor {
+  id              String    @id @default(uuid())
+  url             String    @unique
+  lastChecked     DateTime  @default(now())
+  statusCode      Int?
+  responseTime    Int? // In milliseconds
+  isAccessible    Boolean   @default(true)
+  errorMessage    String?
+  checkCount      Int       @default(0)
+  lastSuccessDate DateTime?
+  lastFailureDate DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([url])
+  @@index([isAccessible])
+  @@index([lastChecked])
+  @@map("url_monitors")
+}
+
+model SearchAnalytics {
+  id          String   @id @default(uuid())
+  query       String
+  url         String
+  clicks      Int      @default(0)
+  impressions Int      @default(0)
+  ctr         Float    @default(0)
+  position    Float    @default(0)
+  date        DateTime @default(now())
+  source      String   @default("google")
+  device      String? // mobile, desktop, tablet
+  country     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([query])
+  @@index([url])
+  @@index([date])
+  @@index([source])
+  @@map("search_analytics")
+}
+
+enum AuditEntityType {
+  PRODUCT
+  CATEGORY
+  BRAND
+  COLLECTION
+  SITE_CONTENT
+  SEO_CONFIG
+  SEO_REDIRECT
+}
+
+enum AuditActionType {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  UNPUBLISH
+  BULK_UPDATE
+}
+
+model SEOAuditLog {
+  id          String          @id @default(uuid())
+  entityType  AuditEntityType
+  entityId    String
+  actionType  AuditActionType
+  changedBy   String? // User ID
+  oldValues   Json?
+  newValues   Json?
+  description String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime        @default(now())
+
+  @@index([entityType])
+  @@index([entityId])
+  @@index([actionType])
+  @@index([createdAt])
+  @@map("seo_audit_logs")
 }

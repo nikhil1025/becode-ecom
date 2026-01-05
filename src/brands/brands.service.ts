@@ -79,6 +79,56 @@ export class BrandsService {
     }
   }
 
+  async findBySlug(slug: string): Promise<any> {
+    try {
+      if (!slug) {
+        throw new BadRequestException('Brand slug is required');
+      }
+
+      const brand = await this.prisma.brand.findUnique({
+        where: { slug },
+        include: {
+          products: {
+            where: { status: 'PUBLISHED', isDeleted: false },
+            take: 10,
+            include: {
+              category: true,
+              variants: {
+                where: { isActive: true },
+                take: 1,
+                include: {
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+          _count: {
+            select: { products: true },
+          },
+        },
+      });
+
+      if (!brand) {
+        throw new NotFoundException('Brand not found');
+      }
+
+      return brand;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to retrieve brand: ' + error.message,
+      );
+    }
+  }
+
   async create(data: {
     name: string;
     slug: string;

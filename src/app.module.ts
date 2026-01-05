@@ -26,6 +26,7 @@ import { ProductsModule } from './products/products.module';
 import { RefundsModule } from './refunds/refunds.module';
 import { ReturnsModule } from './returns/returns.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { SeoModule } from './seo/seo.module';
 import { SiteContentModule } from './site-content/site-content.module';
 import { SocialMediaModule } from './social-media/social-media.module';
 import { UsersModule } from './users/users.module';
@@ -65,6 +66,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
     UsersModule,
     SocialMediaModule,
     AppLogoModule,
+    SeoModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

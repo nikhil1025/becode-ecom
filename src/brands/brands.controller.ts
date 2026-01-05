@@ -27,6 +27,12 @@ export class BrandsController {
     return this.brandsService.findAll();
   }
 
+  // Public endpoint for single brand by slug
+  @Get('slug/:slug')
+  async findBySlug(@Param('slug') slug: string): Promise<any> {
+    return this.brandsService.findBySlug(slug);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<any> {
     return this.brandsService.findOne(id);

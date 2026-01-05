@@ -83,6 +83,58 @@ export class CategoriesService {
     }
   }
 
+  async findBySlug(slug: string): Promise<any> {
+    try {
+      if (!slug) {
+        throw new BadRequestException('Category slug is required');
+      }
+
+      const category = await this.prisma.category.findUnique({
+        where: { slug },
+        include: {
+          parent: true,
+          children: true,
+          products: {
+            where: { status: 'PUBLISHED', isDeleted: false },
+            take: 10,
+            include: {
+              brand: true,
+              variants: {
+                where: { isActive: true },
+                take: 1,
+                include: {
+                  images: {
+                    where: { isPrimary: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+          _count: {
+            select: { products: true },
+          },
+        },
+      });
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+
+      return category;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to retrieve category: ' + error.message,
+      );
+    }
+  }
+
   async getSubcategories(parentId: string): Promise<any[]> {
     try {
       if (!parentId) {
