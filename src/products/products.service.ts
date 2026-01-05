@@ -136,10 +136,10 @@ export class ProductsService {
         throw new BadRequestException('Product ID is required');
       }
 
-      const product = await this.prisma.product.findUnique({
+      const product = await this.prisma.product.findFirst({
         where: {
-          id,
           isDeleted: false,
+          OR: [{ id: id }, { slug: id }],
         },
         include: {
           category: true,
@@ -520,8 +520,12 @@ export class ProductsService {
         throw new BadRequestException('Product slug is required');
       }
 
-      const product = await this.prisma.product.findUnique({
-        where: { slug, status: 'PUBLISHED' },
+      // Single query to find by either ID or slug using OR condition
+      const product = await this.prisma.product.findFirst({
+        where: {
+          status: 'PUBLISHED',
+          OR: [{ id: slug }, { slug: slug }],
+        },
         select: {
           id: true,
           name: true,
@@ -534,6 +538,7 @@ export class ProductsService {
           isFeatured: true,
           metaTitle: true,
           metaDescription: true,
+          status: true,
           variants: {
             select: {
               id: true,
@@ -590,7 +595,9 @@ export class ProductsService {
       });
 
       if (!product) {
-        throw new NotFoundException(`Product with slug "${slug}" not found`);
+        throw new NotFoundException(
+          `Product with identifier "${slug}" not found`,
+        );
       }
 
       return product;

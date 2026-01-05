@@ -27,7 +27,11 @@ export class HomeService {
       if (!config || config.isEnabled) {
         response.featuredProducts = {
           items: featuredProductsData,
-          config: config || { sectionTitle: 'Featured Products', maxItems: 8 },
+          config: config || {
+            sectionTitle: 'Featured Products',
+            sectionDescription: 'Discover our carefully curated selection',
+            maxItems: 8,
+          },
         };
       }
     }
@@ -37,7 +41,11 @@ export class HomeService {
       if (!config || config.isEnabled) {
         response.popularProducts = {
           items: popularProductsData,
-          config: config || { sectionTitle: 'Popular Products', maxItems: 8 },
+          config: config || {
+            sectionTitle: 'Popular Products',
+            sectionDescription: 'Check out our most loved items',
+            maxItems: 8,
+          },
         };
       }
     }
@@ -49,7 +57,36 @@ export class HomeService {
       if (!config || config.isEnabled) {
         response.featuredCategories = {
           items: featuredCategoriesData,
-          config: config || { sectionTitle: 'Shop by Category', maxItems: 6 },
+          config: config || {
+            sectionTitle: 'Shop by Category',
+            sectionDescription: 'Explore our wide range of products',
+            maxItems: 6,
+          },
+        };
+      }
+    }
+
+    // Get featured collection from homepage config
+    const featuredCollectionConfig = homepageConfigs.find(
+      (c) => c.key === 'featured_collection',
+    );
+    if (
+      featuredCollectionConfig?.featuredCollectionId &&
+      (!featuredCollectionConfig || featuredCollectionConfig.isEnabled)
+    ) {
+      const featuredCollection = await this.getFeaturedCollection(
+        featuredCollectionConfig.featuredCollectionId,
+      );
+      if (featuredCollection) {
+        response.featuredCollection = {
+          ...featuredCollection,
+          config: {
+            sectionTitle:
+              featuredCollectionConfig.sectionTitle || 'Featured Collection',
+            sectionDescription:
+              featuredCollectionConfig.sectionDescription ||
+              'Explore our curated collection',
+          },
         };
       }
     }
@@ -291,11 +328,81 @@ export class HomeService {
         isEnabled: true,
         sectionTitle: true,
         sectionSubtitle: true,
+        sectionDescription: true,
         sectionOrder: true,
         maxItems: true,
         metaTitle: true,
         metaDescription: true,
+        featuredCollectionId: true,
       },
     });
+  }
+
+  private async getFeaturedCollection(collectionId: string) {
+    const collection = await this.prisma.collection.findUnique({
+      where: { id: collectionId },
+      include: {
+        products: {
+          where: { 
+            isActive: true,
+            product: { status: 'PUBLISHED' } 
+          },
+          take: 8,
+          orderBy: { position: 'asc' },
+          include: {
+            product: {
+              include: {
+                category: { select: { id: true, name: true, slug: true } },
+                brand: { select: { id: true, name: true, slug: true } },
+                variants: {
+                  where: { isActive: true },
+                  include: { images: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!collection || collection.status !== 'PUBLISHED') return null;
+
+    const products = collection.products
+      .map((cp) => {
+        const product = cp.product;
+        const variant = product.variants[0];
+
+        if (!variant) return null;
+
+        return {
+          productId: product.id,
+          productName: product.name,
+          productSlug: product.slug,
+          averageRating: product.averageRating,
+          reviewCount: product.reviewCount,
+          category: product.category,
+          brand: product.brand,
+          variantId: variant.id,
+          variantName: variant.name,
+          variantSku: variant.sku,
+          attributes: variant.attributes,
+          price: variant.price,
+          salePrice: variant.salePrice,
+          thumbnail: variant.images[0]?.url || null,
+          thumbnailAlt: variant.images[0]?.altText || product.name,
+          stock: variant.stockQuantity,
+        };
+      })
+      .filter(Boolean);
+
+    return {
+      id: collection.id,
+      name: collection.name,
+      slug: collection.slug,
+      description: collection.description,
+      image: collection.bannerImage,
+      products,
+    };
   }
 }

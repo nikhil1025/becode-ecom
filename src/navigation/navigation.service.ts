@@ -20,6 +20,55 @@ export class NavigationService {
     });
   }
 
+  async getHeaderNavigation() {
+    const tabs = await this.prisma.navigationTab.findMany({
+      where: { isActive: true },
+      orderBy: { order: 'asc' },
+    });
+
+    const result = await Promise.all(
+      tabs.map(async (tab) => {
+        const baseItem = {
+          id: tab.id,
+          type: tab.type,
+          label: tab.label,
+          url: tab.url,
+          order: tab.order,
+        };
+
+        if (tab.type === 'CATEGORY' && tab.refId) {
+          const category = await this.prisma.category.findUnique({
+            where: { id: tab.refId },
+            select: { id: true, name: true, slug: true },
+          });
+          if (category) {
+            return {
+              ...baseItem,
+              url: `/shop/products?category=${category.slug}`,
+              category,
+            };
+          }
+        } else if (tab.type === 'COLLECTION' && tab.refId) {
+          const collection = await this.prisma.collection.findUnique({
+            where: { id: tab.refId },
+            select: { id: true, name: true, slug: true },
+          });
+          if (collection) {
+            return {
+              ...baseItem,
+              url: `/collections/${collection.slug}`,
+              collection,
+            };
+          }
+        }
+
+        return baseItem;
+      }),
+    );
+
+    return result;
+  }
+
   async findOne(id: string) {
     const nav = await this.prisma.navigationTab.findUnique({ where: { id } });
     if (!nav) throw new NotFoundException('Navigation tab not found');

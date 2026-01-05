@@ -26,7 +26,11 @@ export class AdminJwtStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
       return null;
     }
 
-    // Return full user object (password already removed by validateUser)
-    return user;
+    // Return user object with userId property for consistency with regular JWT strategy
+    // This ensures req.user.userId is available in controllers
+    return {
+      ...user,
+      userId: user.id, // Add userId property from id
+    };
   }
 }

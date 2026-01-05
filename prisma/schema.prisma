@@ -79,6 +79,7 @@ model User {
   refunds        Refund[]
   variantReviews ProductVariantReview[] @relation("UserReviews")
   adminReplies   AdminReviewReply[]     @relation("AdminReplies")
+  contactReplies ContactReply[]
 
   @@map("users")
 }
@@ -533,6 +534,7 @@ model FeaturedCategory {
 
 enum NavigationType {
   CATEGORY
+  COLLECTION
   PAGE
   CUSTOM
 }
@@ -540,7 +542,7 @@ enum NavigationType {
 model NavigationTab {
   id          String         @id @default(uuid())
   type        NavigationType
-  refId       String? // categoryId or pageSlug
+  refId       String? // categoryId, collectionId, or pageSlug
   label       String
   url         String? // For custom links
   order       Int            @default(0)
@@ -582,18 +584,20 @@ model CommunityMember {
 }
 
 model HomepageConfig {
-  id              String   @id @default(uuid())
-  key             String   @unique // featured_products, popular_products, etc.
-  isEnabled       Boolean  @default(true)
-  sectionTitle    String?
-  sectionSubtitle String?
-  sectionOrder    Int      @default(0)
-  maxItems        Int      @default(8)
-  metaTitle       String?
-  metaDescription String?
-  customSettings  Json? // Additional configuration
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  key                  String   @unique // featured_products, popular_products, etc.
+  isEnabled            Boolean  @default(true)
+  sectionTitle         String?
+  sectionSubtitle      String?
+  sectionDescription   String?
+  sectionOrder         Int      @default(0)
+  maxItems             Int      @default(8)
+  metaTitle            String?
+  metaDescription      String?
+  featuredCollectionId String? // For displaying a single featured collection on homepage
+  customSettings       Json? // Additional configuration
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@index([key])
   @@index([sectionOrder])
@@ -778,4 +782,37 @@ model CollectionProduct {
   @@index([variantId])
   @@index([position])
   @@map("collection_products")
+}
+
+model Contact {
+  id        String         @id @default(uuid())
+  name      String
+  email     String
+  subject   String?
+  message   String         @db.Text
+  isRead    Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  replies   ContactReply[]
+
+  @@index([email])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("contacts")
+}
+
+model ContactReply {
+  id          String    @id @default(uuid())
+  contactId   String
+  contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  adminId     String
+  admin       User      @relation(fields: [adminId], references: [id])
+  message     String    @db.Text
+  sentAt      DateTime  @default(now())
+  emailSentAt DateTime?
+
+  @@index([contactId])
+  @@index([adminId])
+  @@index([sentAt])
+  @@map("contact_replies")
 }

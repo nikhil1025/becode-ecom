@@ -26,6 +26,11 @@ export class NavigationController {
       isActive === 'true' ? true : isActive === 'false' ? false : undefined;
     return this.service.findAll(active);
   }
+
+  @Get('header')
+  async getHeaderNavigation() {
+    return this.service.getHeaderNavigation();
+  }
 }
 
 @Controller('admin/navigation')

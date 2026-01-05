@@ -388,7 +388,7 @@ export class ReviewsService {
           .sendReviewStatusEmail(review.user.email, {
             firstName: review.user.firstName || 'there',
             productName: review.product.name,
-            status: status as 'APPROVED' | 'REJECTED',
+            status: status,
             reason:
               status === ReviewStatus.REJECTED
                 ? 'Does not meet community guidelines'
@@ -783,10 +783,18 @@ export class ReviewsService {
       );
     }
 
+    if (!adminId) {
+      throw new BadRequestException('Admin ID is required');
+    }
+
     return this.prisma.adminReviewReply.create({
       data: {
-        reviewId,
-        adminId,
+        review: {
+          connect: { id: reviewId },
+        },
+        admin: {
+          connect: { id: adminId },
+        },
         replyText,
         isVisible: true,
       },

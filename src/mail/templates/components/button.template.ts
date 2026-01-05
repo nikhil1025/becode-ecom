@@ -5,6 +5,7 @@ export interface ButtonOptions {
   url: string;
   color?: string;
   fullWidth?: boolean;
+  primary?: boolean;
 }
 
 export const buttonTemplate = (options: ButtonOptions): string => {

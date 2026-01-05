@@ -11,6 +11,7 @@ import {
 
 export enum NavigationType {
   CATEGORY = 'CATEGORY',
+  COLLECTION = 'COLLECTION',
   PAGE = 'PAGE',
   CUSTOM = 'CUSTOM',
 }

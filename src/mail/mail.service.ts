@@ -178,7 +178,7 @@ export class MailService {
       isAdmin?: boolean;
     },
   ): Promise<void> {
-    const resetPath = resetDetails.isAdmin 
+    const resetPath = resetDetails.isAdmin
       ? `/admin/reset-password/${resetDetails.resetToken}`
       : `/auth/reset-password/${resetDetails.resetToken}`;
     const resetUrl = `${MAIL_CONFIG.WEBSITE_URL}${resetPath}`;
@@ -2286,6 +2286,71 @@ export class MailService {
       from: MAIL_CONFIG.FROM_EMAIL,
       to: MAIL_CONFIG.ADMIN_EMAIL,
       subject: `📬 New Contact Form Submission from ${contactData.name}`,
+      html: wrapEmailContent(content),
+    });
+  }
+
+  /**
+   * Send admin reply to contact form submission
+   */
+  async sendContactReply(
+    to: string,
+    replyData: {
+      userName: string;
+      originalSubject: string | null;
+      originalMessage: string;
+      replyMessage: string;
+      adminName?: string;
+    },
+  ): Promise<void> {
+    const content = `
+      ${headerTemplate({ title: 'Response to Your Inquiry', emoji: '💬' })}
+      <div style="padding: 40px;">
+        <h2 style="color: #333; margin: 0 0 20px;">Hello ${replyData.userName},</h2>
+        <p style="color: #666; line-height: 1.8; font-size: 16px;">
+          Thank you for contacting <strong>${MAIL_CONFIG.APP_NAME}</strong>. ${replyData.adminName ? `${replyData.adminName} from our team has responded to your inquiry.` : 'Our team has responded to your inquiry.'}
+        </p>
+
+        ${alertBoxTemplate({
+          type: 'info',
+          title: 'Your Original Message',
+          content: `${replyData.originalSubject ? `<p style="margin: 0 0 10px;"><strong>Subject:</strong> ${replyData.originalSubject}</p>` : ''}
+                    <p style="margin: 0; white-space: pre-wrap; color: #888;">${replyData.originalMessage}</p>`,
+        })}
+
+        ${alertBoxTemplate({
+          type: 'success',
+          title: 'Our Response',
+          content: `<p style="margin: 0; white-space: pre-wrap;">${replyData.replyMessage}</p>`,
+        })}
+
+        <p style="color: #666; line-height: 1.8; font-size: 16px; margin-top: 30px;">
+          If you have any further questions, feel free to reply to this email or contact us again.
+        </p>
+
+        ${buttonGroupTemplate([
+          {
+            text: 'Visit Website',
+            url: MAIL_CONFIG.WEBSITE_URL,
+            primary: true,
+          },
+          {
+            text: 'Contact Us',
+            url: `${MAIL_CONFIG.WEBSITE_URL}/contact`,
+            primary: false,
+          },
+        ])}
+      </div>
+      ${footerTemplate()}
+    `;
+
+    await this.transporter.sendMail({
+      from: MAIL_CONFIG.FROM_EMAIL,
+      to: to,
+      replyTo: MAIL_CONFIG.SUPPORT_EMAIL || MAIL_CONFIG.FROM_EMAIL,
+      subject: replyData.originalSubject
+        ? `Re: ${replyData.originalSubject}`
+        : 'Response to Your Contact Form Inquiry',
       html: wrapEmailContent(content),
     });
   }
